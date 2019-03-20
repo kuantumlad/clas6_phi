@@ -17,7 +17,13 @@ Bool_t e_zvertex_pass(int strict, int ExpOrSim, Float_t corrvz)
   float leftcut[Nstrictnesses] = {-27.7302 - 0.4, -27.7302 - 0.2, -27.7302, -27.7302 + 0.2, -27.7302 + 0.4};
   float rightcut[Nstrictnesses] = {-22.6864 + 0.4, -22.6864 + 0.2, -22.6864, -22.6864 - 0.2, -22.6864 - 0.4};
 
-  if(ExpOrSim == 1 && corrvz > leftcut[strictIndex] && corrvz < rightcut[strictIndex]) return 1;
+  float temp_leftcut = -28.50;
+  float temp_rightcut = -21.0;
+  
+  std::cout << "strictness " << strictIndex << " vertex  " << corrvz << " min " << leftcut[strictIndex] << " max " << rightcut[strictIndex] << std::endl;
+
+  //if(ExpOrSim == 1 && corrvz > leftcut[strictIndex] && corrvz < rightcut[strictIndex]) return 1;
+  if(ExpOrSim == 1 && corrvz > temp_leftcut && corrvz < temp_rightcut) return 1;
   if(ExpOrSim == 0 && corrvz > -29.0 && corrvz < -21.0) return 1; // bad agreement between MC and data, so not using the same cuts
 
   //int strictIndex = strict + 2;
@@ -34,12 +40,14 @@ Bool_t e_zvertex_pass(int strict, int ExpOrSim, Float_t corrvz)
 
 // __________________________________________________________________________________________ //
 
-Bool_t e_ECsampling_pass(int strict, int ExpOrSim, int sector, Float_t etot, Float_t p)
+Bool_t e_ECsampling_pass(int strict, int ExpOrSim, int sector, Float_t etot, Float_t p, std::map<int,std::vector<double> >  mean_par, std::map<int, std::vector<double> > sigma_par)
 {
   if(strict == 9) return 1;
 
   int strictIndex = strict + 2;
   const int Nstrictnesses = 5;
+
+  //  std::cout << "strictness " << strictIndex << " sampling fraction  " << std::endl;// << corrvz << " min " << leftcut << " max " << rightcut << std::endl;
 
   // looser cut:  6 sigma on top, 4 sigma on bottom
   // loose cut:   5.5 sigma on top, 3.5 sigma on bottom
@@ -59,9 +67,21 @@ Bool_t e_ECsampling_pass(int strict, int ExpOrSim, int sector, Float_t etot, Flo
   float e[2][Nstrictnesses][6] = {{{0.048427,0.0540548,0.0554377,0.054936,0.0547004,0.056436}, {0.0435273,0.0485109,0.0499693,0.0492173,0.049119,0.0505913}, {0.0386275,0.042967,0.0445008,0.0434986,0.0435376,0.0447465}, {0.0337277,0.0374231,0.0390324,0.0377799,0.0379561,0.0389018}, {0.028828,0.0318792,0.033564,0.0320612,0.0323747,0.033057}}, {{0.0584026,0.0886916,0.0717544,0.0378552,0.0672658,0.0651479}, {0.0543262,0.0827722,0.0669633,0.0367423,0.0628048,0.0612946}, {0.0502498,0.0768528,0.0621723,0.0356294,0.0583439,0.0574414}, {0.0461734,0.0709334,0.0573813,0.0345165,0.0538829,0.0535882}, {0.0420971,0.0650139,0.0525903,0.0334035,0.049422,0.0497349}}};
   float f[2][Nstrictnesses][6] = {{{-0.0070008,-0.0084064,-0.00866651,-0.00879214,-0.00842053,-0.00919199}, {-0.00639328,-0.0076115,-0.00791009,-0.0079668,-0.00762743,-0.00831007}, {-0.00578576,-0.0068166,-0.00715367,-0.00714147,-0.00683433,-0.00742816}, {-0.00517824,-0.0060217,-0.00639724,-0.00631613,-0.00604123,-0.00654625}, {-0.00457072,-0.0052268,-0.00564082,-0.00549079,-0.00524814,-0.00566434}}, {{-0.00601745,-0.0103018,-0.00793447,-0.00237599,-0.00874211,-0.00794845}, {-0.0055142,-0.00957388,-0.00729358,-0.00241442,-0.00810823,-0.00748105}, {-0.00501095,-0.00884599,-0.00665269,-0.00245286,-0.00747436,-0.00701365}, {-0.00450769,-0.0081181,-0.0060118,-0.0024913,-0.00684048,-0.00654626}, {-0.00400444,-0.00739022,-0.00537091,-0.00252974,-0.00620661,-0.00607887}}};
 
-  if(etot/p > d[ExpOrSim][strictIndex][sector-1] + e[ExpOrSim][strictIndex][sector-1]*p + f[ExpOrSim][strictIndex][sector-1]*p*p && etot/p < a[ExpOrSim][strictIndex][sector-1] + b[ExpOrSim][strictIndex][sector-1]*p + c[ExpOrSim][strictIndex][sector-1]*p*p) return 1;
+  std::cout << " [eID::e_SamplingFraction_pass] sf mean a " << mean_par[0][sector-1] << " b " << mean_par[1][sector-1] << " c " << mean_par[2][sector-1] << " d " << mean_par[3][sector-1] << std::endl;
+  
+  double mean_ecsf = mean_par[0][sector-1] + mean_par[1][sector-1]*p + mean_par[2][sector-1]*p*p + mean_par[3][sector-1]*p*p*p;
+  double sig_ecsf = sigma_par[0][sector-1] + sigma_par[1][sector-1]*p + sigma_par[2][sector-1]*p*p + sigma_par[3][sector-1]*p*p*p;
 
-  return 0;
+  double max_ecsf = mean_ecsf + 5.0*sig_ecsf;
+  double min_ecsf = mean_ecsf - 5.0*sig_ecsf;
+
+  //std::cout << " max_ecsf " << max_ecsf << " min_ecsf " << min_ecsf << " sf " << etot/p << std::endl;
+
+  //if(etot/p > d[ExpOrSim][strictIndex][sector-1] + e[ExpOrSim][strictIndex][sector-1]*p + f[ExpOrSim][strictIndex][sector-1]*p*p && etot/p < a[ExpOrSim][strictIndex][sector-1] + b[ExpOrSim][strictIndex][sector-1]*p + c[ExpOrSim][strictIndex][sector-1]*p*p) return 1;
+
+  if( etot/p > min_ecsf && etot/p < max_ecsf ) return true;
+
+  return false;
 }
 
 // __________________________________________________________________________________________ //
@@ -73,8 +93,11 @@ Bool_t e_ECoutVin_pass(int strict, Float_t ec_ei)
   int strictIndex = strict + 2;
   const int Nstrictnesses = 5;
   float cutval[Nstrictnesses] = {0.045, 0.050, 0.055, 0.060, 0.065};
+  float cutval_max = 1.20;
 
-  if(ec_ei > cutval[strictIndex]) return 1;
+  //std::cout << "strictness " << strictIndex << " ECOutVin  " << ec_ei << " min " << cutval[strictIndex]  << std::endl;
+
+  if(ec_ei > cutval[strictIndex] && ec_ei < cutval_max) return 1;
 
   return 0;
 }
@@ -91,6 +114,11 @@ Bool_t e_ECgeometric_pass(int strict, Float_t x, Float_t y, Float_t z)
   float uMax[Nstrictnesses] = {412, 406, 400, 394, 388};
   float vMax[Nstrictnesses] = {374, 368, 362, 356, 350};
   float wMax[Nstrictnesses] = {407, 401, 395, 389, 383};
+
+  //std::cout << "strictness " << strictIndex << " EC UVW plane  " << " u min " << uMin[strictIndex] << "u  max " << uMax[strictIndex] << std::endl;
+  //std::cout << "strictness " << strictIndex << " EC UVW plane  " << " v min " << 0 << "v  max " << vMax[strictIndex] << std::endl;
+  //std::cout << "strictness " << strictIndex << " EC UVW plane  " << " w min " << 0 << "w  max " << wMax[strictIndex] << std::endl;
+
 
   Float_t u, v, w, xi, yi, zi; 
   Float_t EC_the = 0.4363323;
@@ -144,6 +172,9 @@ Bool_t e_CCthetaMatching_pass(int strict, int ExpOrSim, int sector, Float_t thet
   const int Nstrictnesses = 5;
   float Nsigma[Nstrictnesses] = {5.0, 4.5, 4.0, 3.5, 3.0};
 
+  //std::cout << "strictness " << strictIndex << " CC theta matching  " << std::endl;
+
+
   double CCseg_mu_e[2][6][18] = {{{9.83512,10.8576,12.3534,14.0989,16.0519,17.9409,19.9201,21.9689,24.0949,26.1043,28.2876,30.4488,32.8855,35.4499,38.0482,40.7007,42.8706,44.3719},{9.8311,10.7617,12.2906,14.0424,16.0356,17.9779,19.9756,21.9923,24.0451,26.0393,28.2977,30.4821,32.9376,35.5373,38.2148,40.8042,42.967,44.3765},{9.85194,10.9203,12.4324,14.1801,16.1147,18.0023,19.9695,22.023,24.1619,26.193,28.417,30.5605,33.0145,35.5573,38.1174,40.7452,42.9429,44.434},{9.83662,10.8673,12.3797,14.101,16.0623,18.0108,20.0157,22.0435,24.1044,26.0546,28.2541,30.4766,32.9183,35.5939,38.2295,40.8019,42.9187,44.4056},{9.84106,10.8594,12.4104,14.138,16.0514,17.9305,19.8963,21.9696,24.0971,26.1388,28.3623,30.5144,32.9263,35.4355,38.0802,40.7846,42.9397,44.4507},{9.83076,10.6723,12.3371,14.1462,16.0434,17.9909,19.9782,21.9891,24.0858,26.1182,28.3126,30.4825,32.9697,35.5284,38.1669,40.8796,42.9852,44.3872}},{{9.34037,10.7594,12.7647,14.736,16.6515,18.7595,20.8056,22.8826,24.8338,26.773,28.798,31.1131,33.6118,36.6606,39.3775,41.8706,43.7937,43.5108},{9.39088,10.7841,12.5898,14.4987,16.4176,18.5062,20.6564,22.7226,24.7938,26.8372,28.8277,31.009,33.685,36.3016,39.3323,41.7001,43.5399,43.361},{9.28666,10.6877,12.6832,14.5967,16.5731,18.6448,20.6933,22.8032,24.8087,26.7244,28.7212,30.912,33.8709,36.6297,39.3059,41.7144,43.6106,44.0706},{9.03196,10.7856,12.8366,14.7598,16.6495,18.6836,20.7819,22.9004,24.8551,26.7158,28.6873,30.9702,33.4061,36.4594,39.1286,41.7975,43.8097,43.9377},{9.96753,10.6624,13.427,14.113,16.7449,18.7448,20.8307,23.0411,25.1834,27.1859,29.5993,31.5893,34.1584,36.6028,39.3136,41.8122,43.8056,43.3776},{9.70209,10.8024,12.7174,14.7,16.5544,18.589,20.5457,22.7765,24.6167,26.7398,28.7212,31.0336,33.3699,36.3344,39.5463,42.0496,43.7081,43.539}}};
   double CCseg_sigma_e[2][6][18] = {{{0.580766,0.906869,0.991186,1.04888,0.97877,0.971421,0.999088,1.01544,1.06258,1.04797,1.10965,1.14557,1.17488,1.24825,1.28958,1.31761,1.1265,0.781513},{0.581483,0.903044,0.985741,1.04766,1.00184,0.986884,0.988112,0.998394,1.03887,1.04899,1.14625,1.15233,1.21354,1.28391,1.26709,1.3108,1.11322,0.723599},{0.590405,0.910468,0.99884,1.04504,0.988364,0.975463,1.00485,1.02654,1.08591,1.05942,1.12799,1.16096,1.17887,1.23828,1.29489,1.35788,1.18078,0.781653},{0.585818,0.907593,0.996763,1.03009,1.00414,1.00494,0.993469,1.01078,1.03484,1.02931,1.13705,1.15768,1.21619,1.28737,1.26566,1.30526,1.09945,0.774484},{0.586356,0.917402,1.0065,1.03095,0.975623,0.967723,0.992303,1.03544,1.06634,1.05213,1.12664,1.15316,1.16242,1.25045,1.3042,1.34331,1.12554,0.774596},{0.564845,0.867598,1.05251,1.00669,1.00833,0.992138,0.987713,1.0045,1.05828,1.05632,1.12619,1.16169,1.1983,1.26686,1.28113,1.30279,1.0695,0.704273}},{{0.943102,1.07199,1.18821,1.12258,1.10298,1.12796,1.24707,1.13558,1.10508,1.2582,1.40941,1.56726,1.76608,1.67508,1.60719,1.54769,1.18419,1.93474},{0.989609,1.16341,1.25064,1.02821,1.06759,1.24962,1.21702,1.30632,1.34487,1.29768,1.49358,1.57154,1.75414,1.97463,1.65982,1.62968,1.32612,1.98807},{0.910813,1.11557,1.20224,1.14018,1.1002,1.1347,1.17672,1.27507,1.20364,1.20651,1.39737,1.59964,1.7779,1.81327,1.72549,1.68432,1.2769,1.64381},{0.793913,1.1091,1.19104,1.0315,0.982395,1.06427,1.14631,1.10191,1.1023,1.1032,1.23496,1.49888,1.65003,1.53575,1.61459,1.54627,1.20327,1.71327},{1.09804,1.42595,1.36764,1.94174,1.09743,1.14992,1.23973,1.25774,1.39793,1.35578,1.56965,1.6683,1.60559,1.71278,1.6854,1.7311,1.29476,1.99692},{1.01493,1.07025,1.25704,1.15883,1.06627,1.09337,1.17806,1.13053,1.15602,1.24616,1.36269,1.45487,1.6465,1.9598,1.73498,1.66839,1.5,2.04473}}};
 
@@ -154,12 +185,32 @@ Bool_t e_CCthetaMatching_pass(int strict, int ExpOrSim, int sector, Float_t thet
 
 // __________________________________________________________________________________________ //
 
+Bool_t e_CCNphe_pass(int strict, Float_t nphe ){
+
+  if( strict == 9 ) return 1;
+  int strictIndex = strict + 2;
+
+  const int Nstrictnesses = 5;
+  int NCCphe[Nstrictnesses] = { 15, 18, 20, 22, 24 };
+  int NCCphe_max = 999;
+
+  if( nphe > NCCphe[strictIndex] && nphe < 999) return 1;
+
+  return 0;
+}
+
+
+// __________________________________________________________________________________________ //
+
 Bool_t e_CCfiducial_pass(int strict, Float_t thetaCC, Float_t relphi)
 {
   if(strict == 9) return 1;
 
   //if(thetaCC > 44.5 - 35.0*sqrt(1.0 - pow(relphi,2.0)/575.0)) return 1; // from Wes
   //if(thetaCC > 46.5 - 35.0*sqrt(1.0 - pow(relphi,2.0)/575.0)) return 1; // my original values
+
+  //std::cout << "strictness " << strict << " CC Fiducial  " <<  std::endl;
+
 
   if(strict == -2 && thetaCC > 45.0 - 35.0*sqrt(1.0 - pow(relphi,2.0)/375.0)) return 1;
   if(strict == -1 && thetaCC > 45.5 - 35.0*sqrt(1.0 - pow(relphi,2.0)/362.5)) return 1;
@@ -193,6 +244,9 @@ Bool_t e_R1fid_pass(int strict, Int_t sector, Float_t tl1_x, Float_t tl1_y)
   float rotx = tl1_y*sin(sm1*(3.14159/180.0)*60.0)+tl1_x*cos(sm1*(3.14159/180.0)*60.0);
   float roty = tl1_y*cos(sm1*(3.14159/180.0)*60.0)-tl1_x*sin(sm1*(3.14159/180.0)*60.0);
 
+
+  //std::cout << "strictness " << strictIndex << " R1Fid " << std::endl;
+
   if(rotx > height[strictIndex] - slope[strictIndex]*roty && rotx > height[strictIndex] + slope[strictIndex]*roty) return 1;
 
   return 0;
@@ -216,6 +270,7 @@ Bool_t e_R3fid_pass(int strict, Int_t sector, Float_t tl3_x, Float_t tl3_y)
     {
       slope[st] = 1.0/tan(0.5*(3.141592653/180.0)*angle[st]);
     }
+  //std::cout << "strictness " << strictIndex << " R3Fid " << std::endl;
 
   if(tl3_x > height[strictIndex] - slope[strictIndex]*tl3_y && tl3_x > height[strictIndex] + slope[strictIndex]*tl3_y) return 1;
 
@@ -227,6 +282,9 @@ Bool_t e_R3fid_pass(int strict, Int_t sector, Float_t tl3_x, Float_t tl3_y)
 Bool_t e_CCphiMatching_pass(int strict, Int_t CCphiM)
 {
   if(strict == 9) return 1;
+
+  //std::cout << "strictness " << strict << " CCphi " << std::endl;
+
 
   if(CCphiM >= -1 && CCphiM < 2) return 1;
 

@@ -16,7 +16,7 @@
 #include "programFiles/getGenIndices.C"
 #include "MomCorr.C"
 
-void mysidis(int accIterationN = 0, int filestart = 1, int Nfiles = 5, int ExpOrSim = 1, bool do_momCorr_e = 1, bool do_momCorr_pions = 1, int e_zvertex_strict = 0, int e_ECsampling_strict = 0, int e_ECoutVin_strict = 0, int e_ECgeometric_strict = 0, int e_CCthetaMatching_strict = 0, int e_R1fid_strict = 0, int e_R3fid_strict = 0, int e_CCphiMatching_strict = 0, int e_CCfiducial_strict = 0, int yCut_strict = 0, int pip_vvp_strict = 0, int pip_R1fid_strict = 0, int pip_MXcut_strict = 0, int pim_vvp_strict = 0, int pim_R1fid_strict = 0, int pim_MXcut_strict = 0) // ExpOrSim = 0(MC) or 1(data) // note: momCorr is only done to data (even if it's turned on for MC)
+void mysidis(int accIterationN = 0, int filestart = 1, int Nfiles = 2, int ExpOrSim = 1, bool do_momCorr_e = 1, bool do_momCorr_pions = 1, int e_zvertex_strict = 0, int e_ECsampling_strict = 0, int e_ECoutVin_strict = 0, int e_ECgeometric_strict = 0, int e_CCthetaMatching_strict = 0, int e_R1fid_strict = 0, int e_R3fid_strict = 0, int e_CCphiMatching_strict = 0, int e_CCfiducial_strict = 0, int yCut_strict = 0, int pip_vvp_strict = 0, int pip_R1fid_strict = 0, int pip_MXcut_strict = 0, int pim_vvp_strict = 0, int pim_R1fid_strict = 0, int pim_MXcut_strict = 0) // ExpOrSim = 0(MC) or 1(data) // note: momCorr is only done to data (even if it's turned on for MC)
 {
     TStopwatch *stopwat = new TStopwatch();
     
@@ -169,6 +169,8 @@ void mysidis(int accIterationN = 0, int filestart = 1, int Nfiles = 5, int ExpOr
     Float_t pi = 3.14159265359;
     Float_t pi180 = pi/180.0;
     Float_t pi180_inv = 180.0/pi;
+
+    int v_el_pass[9] = {0,0,0,0,0,0,0,0,0};
     
     Int_t mcnentr;
     Int_t mcid[35];
@@ -408,6 +410,11 @@ void mysidis(int accIterationN = 0, int filestart = 1, int Nfiles = 5, int ExpOr
                     h_pim_phih[x][QQ][z][PT2][1] = new TH1F(Form("rec_pim_phih_x%i_QQ%i_z%i_PT2%i",x,QQ,z,PT2), Form("rec_pim_phih_x%i_QQ%i_z%i_PT2%i",x,QQ,z,PT2), NphihBins, phihMin, phihMax);
                     h_pim_phih[x][QQ][z][PT2][1]->Sumw2();
                 }}}}
+
+
+    TH1D *h_epX_mass = new TH1D("h_epX_mass","h_epX_mass",150, -1.5, 4.0);
+
+
     // %%%%% end define histograms %%%%%
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
@@ -456,7 +463,7 @@ void mysidis(int accIterationN = 0, int filestart = 1, int Nfiles = 5, int ExpOr
             // %%%%% end get gen. particle indices  %%%%%
             
             // %%%%% electron ID %%%%%
-            e_index[1] = eID(gpart, q, p, cc_sect, sc_sect, ec_sect, dc_sect, cx, cy, cz, tl1_x, tl1_y, tl3_x, tl3_y, tl3_z, tl3_cx, tl3_cy, tl3_cz, e_zvertex_strict, vz, vy, vx, e_ECsampling_strict, ExpOrSim, etot, e_ECoutVin_strict, ec_ei, ech_x, ech_y, ech_z, e_CCthetaMatching_strict, cc_segm, e_ECgeometric_strict, e_R1fid_strict, e_R3fid_strict, e_CCphiMatching_strict, sc_pd, e_CCfiducial_strict);
+            e_index[1] = eID(gpart, q, p, cc_sect, sc_sect, ec_sect, dc_sect, cx, cy, cz, tl1_x, tl1_y, tl3_x, tl3_y, tl3_z, tl3_cx, tl3_cy, tl3_cz, e_zvertex_strict, vz, vy, vx, e_ECsampling_strict, ExpOrSim, etot, e_ECoutVin_strict, ec_ei, ech_x, ech_y, ech_z, e_CCthetaMatching_strict, cc_segm, e_ECgeometric_strict, e_R1fid_strict, e_R3fid_strict, e_CCphiMatching_strict, sc_pd, e_CCfiducial_strict,v_el_pass);
             // %%%%% end electron ID %%%%%
             
             // %%%%% set e- 3 and 4 vectors %%%%%
@@ -489,9 +496,9 @@ void mysidis(int accIterationN = 0, int filestart = 1, int Nfiles = 5, int ExpOr
             // %%%%% end set e- 3 and 4 vectors %%%%%
             
             // %%%%% hadron ID %%%%%
-            if(e_index[1] >= 0)
+	    if(e_index[1] >= 0)
             {
-                vector<int> hadronIndices = hadronID(gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, mcp, mcphi, mctheta, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict);
+	      vector<int> hadronIndices = hadronID(gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, mcp, mcphi, mctheta, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict);
                 pip_index[1] = hadronIndices[0];
                 pim_index[1] = hadronIndices[1];
                 prot_index[1] = hadronIndices[2];
@@ -540,6 +547,11 @@ void mysidis(int accIterationN = 0, int filestart = 1, int Nfiles = 5, int ExpOr
             TLorentzVector V4_pip_prime[2], V4_pim_prime[2], V4_prot_prime[2];
             TLorentzVector V4_X_epipX[2];
             TLorentzVector V4_X_epimX[2];
+
+	    ////// checking mising mass of final state to compare to clary missing mass for ep->epX
+	    if ( e_index[1] >= 0 && prot_index[1] > 0 ){
+	      h_epX_mass->Fill( (V4k + V4ISproton - V4_e[1] - V4_prot[1]).M() );
+	    }
             
             for(int j = 1; j >= ExpOrSim; j--)
             {

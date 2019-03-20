@@ -13,14 +13,17 @@
 #include "programFiles/functions.C"
 #include "programFiles/eID.C"
 #include "programFiles/hadronMLEID.C"
+#include "programFiles/hadronNegMLEID.C"
 #include "programFiles/getGenIndices.C"
+#include "programFiles/hadronID.C"
+#include "programFiles/hadronDeltaVzPass.C"
 #include "MomCorr.C"
 #include <vector>
 #include <map>
 #include "loadBetaParameters.C"
 #include "getBeta.C"
 
-int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int ExpOrSim = 1, bool do_momCorr_e = 0, bool do_momCorr_pions = 1, int cut_to_vary = 0, int cut_strictness = 0 ){ //int e_zvertex_strict = 0, int e_ECsampling_strict = 0, int e_ECoutVin_strict = 0, int e_ECgeometric_strict = 0, int e_CCthetaMatching_strict = 0, int e_R1fid_strict = 0, int e_R3fid_strict = 0, int e_CCphiMatching_strict = 0, int e_CCfiducial_strict = 0, int yCut_strict = 0, int pip_vvp_strict = 0, int pip_R1fid_strict = 0, int pip_MXcut_strict = 0, int pim_vvp_strict = 0, int pim_R1fid_strict = 0, int pim_MXcut_strict = 0)
+int my_phi6(int iteration_number = 0,  int filestart = 0, int fileend = 1, int ExpOrSim = 1, bool do_momCorr_e = 1, bool do_momCorr_pions = 1, int cut_to_vary = 0, int cut_strictness = 0 ){ //int e_zvertex_strict = 0, int e_ECsampling_strict = 0, int e_ECoutVin_strict = 0, int e_ECgeometric_strict = 0, int e_CCthetaMatching_strict = 0, int e_R1fid_strict = 0, int e_R3fid_strict = 0, int e_CCphiMatching_strict = 0, int e_CCfiducial_strict = 0, int yCut_strict = 0, int pip_vvp_strict = 0, int pip_R1fid_strict = 0, int pip_MXcut_strict = 0, int pim_vvp_strict = 0, int pim_R1fid_strict = 0, int pim_MXcut_strict = 0)
   std::cout << " >> BEGINNING PHI ANALYSIS " << std::endl;
   TStopwatch *stopwatch = new TStopwatch();
   
@@ -31,7 +34,7 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   // %%%%%%%% read the input files into the TChain %%%%%%%%
   int NtotalFiles = 590;// 11625 must be before a merging of files
   ifstream filelist;
-  filelist.open("programFiles/dataFiles.txt");
+  filelist.open("programFiles/dataFilesClary.txt");
   //int kStop = Nfiles + filestart;
   int kStop = fileend;
   //if(kStop > NtotalFiles+1) kStop = NtotalFiles+1;
@@ -43,7 +46,7 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   for(int k = 0; k <= NtotalFiles; k++){
     string filename;
     filelist>>filename;
-    if( k >= filestart && k <= fileend ){
+    if( k >= filestart && k < fileend ){
       std::cout << " >> ADDING FILE " << filename.c_str() << std::endl;
       if(k >= filestart) h22chain->Add(filename.c_str());
       if(k == filestart) firstfilename = filename;
@@ -61,10 +64,10 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
 
   Int_t gpart;
   Int_t mcentr;
-  Int_t mcid;
-  Float_t mctheta;
-  Float_t mcphi;
-  Float_t mcp;
+  Int_t mcid[35];
+  Float_t mctheta[35];
+  Float_t mcphi[35];
+  Float_t mcp[35];
     
   Float_t p[35];
   Int_t q[35];
@@ -153,18 +156,27 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   std::string cut_number = std::to_string(cut_to_vary);
   std::string cut_strict_lvl;
   std::string out_dir;
-  if( cut_strictness == -1 ){
+  if( cut_strictness == 0 ){
+    cut_strict_lvl = "vl";
+    out_dir = "/home/bclary/clas6/e1f/retro-sidis/mysidis/phi_loose/";
+  }
+  else if( cut_strictness == 1 ){
     cut_strict_lvl = "l";
     out_dir = "/home/bclary/clas6/e1f/retro-sidis/mysidis/phi_loose/";
   }
-  else if( cut_strictness == 0 ){
+  else if( cut_strictness == 2 ){
     cut_strict_lvl = "n";
     out_dir = "/home/bclary/clas6/e1f/retro-sidis/mysidis/phi_nominal/";
   }
-  else if( cut_strictness == 1 ){
+  else if( cut_strictness == 3 ){
     cut_strict_lvl = "t";
     out_dir = "/home/bclary/clas6/e1f/retro-sidis/mysidis/phi_tight/";
   }
+  else if( cut_strictness == 4 ){
+    cut_strict_lvl = "vt";
+    out_dir = "/home/bclary/clas6/e1f/retro-sidis/mysidis/phi_tight/";
+  }
+  
   
   string outfilename = "my_phi6_"+ std::to_string(filestart) + "_" + std::to_string(fileend) + "_clvl_" + cut_number + "_cs_" + cut_strict_lvl + ".root";
   TFile *outputfile;
@@ -172,30 +184,37 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   std::cout << " >> SAVING TO FILE " << outfilename << std::endl;
   TTree *output_tree = new TTree("output_tree","Final Particles");
 
-  int el_pass_rate[9] = {0,0,0,0,0,0,0,0,0};
+  int el_pass_rate[10] = {0,0,0,0,0,0,0,0,0,0};
 
   TLorentzVector *final_el = new TLorentzVector(0,0,0,0);
   TLorentzVector *final_pr = new TLorentzVector(0,0,0,0);
   TLorentzVector *final_kp = new TLorentzVector(0,0,0,0);
   TLorentzVector *final_km = new TLorentzVector(0,0,0,0);
+
+  TLorentzVector el(0,0,0,0);
+  TLorentzVector pr(0,0,0,0);
+  TLorentzVector kp(0,0,0,0);
+  TLorentzVector km(0,0,0,0);
+
   Double_t pr_conflvl = -1.0;
   Double_t kp_conflvl = -1.0;			
   Double_t pip_conflvl = -1.0;
+  Double_t pim_conflvl = -1.0;
   Double_t km_conflvl = -1.0;
 
   Int_t topology = -1;
   Int_t hel= -1;
   output_tree->Branch("topology",&topology,"topology/I");
-  output_tree->Branch("final_el","TLorentzVector",&final_el);
-  output_tree->Branch("final_pr","TLorentzVector",&final_pr);
-  output_tree->Branch("final_kp","TLorentzVector",&final_kp);
-  output_tree->Branch("final_km","TLorentzVector",&final_km);
-  output_tree->Branch("pr_conflvl",&pr_conflvl, "pr_conflvl/D");
-  output_tree->Branch("kp_conflvl",&kp_conflvl, "kp_conflvl/D");
-  output_tree->Branch("km_conflvl",&km_conflvl, "km_conflvl/D");  
+  output_tree->Branch("electron","TLorentzVector",&final_el);
+  output_tree->Branch("proton","TLorentzVector",&final_pr);
+  output_tree->Branch("kaon_pos","TLorentzVector",&final_kp);
+  output_tree->Branch("kaon_neg","TLorentzVector",&final_km);
+  output_tree->Branch("alpha_proton",&pr_conflvl, "pr_conflvl/D");
+  output_tree->Branch("alpha_kaon_pos",&kp_conflvl, "kp_conflvl/D");
+  output_tree->Branch("alpha_kaon_neg",&km_conflvl, "km_conflvl/D");  
   output_tree->Branch("el_pass_rate",&el_pass_rate,"el_pass_rate[9]/I");
   //output_tree->Branch("final_el","TLorentzVector",&final_el);
-  output_tree->Branch("corr_hel",&hel,"corr_hel/I");
+  output_tree->Branch("helicity",&hel,"corr_hel/I"); //corrected helicity
   
   std::cout << " GETTING NUMNER OF ENTRIES " << std::endl;
   cout<<"entries: "<<h22chain->GetEntries()/1000<<" thousand"<<endl;
@@ -204,12 +223,15 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   Float_t prot_mass = 0.938272; // GeV
   Float_t pip_mass = 0.13957; // GeV
   Float_t pim_mass = 0.13957; // GeV
-  Float_t kp_mass = 0.4937; // GeV
-  Float_t km_mass = 0.4937; // GeV
+  Float_t kp_mass = 0.49367; // GeV
+  Float_t km_mass = 0.49367; // GeV
   
   int proton_id = 2212;
   int kaon_plus_id = 321;
   int pion_plus_id = 211;
+
+  int kaon_minus_id = -321;
+  int pion_minus_id = -211;
 
   Float_t speed_of_light = 29.9792458; // cm/ns
   Float_t Beam_Energy = 5.498; // GeV
@@ -221,7 +243,7 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   TLorentzVector V4ISproton(0.0, 0.0, 0.0, prot_mass); // IS = Initial State
 
   // %%%%%%%%%% cut settings %%%%%%%%%%%
-  int e_zvertex_strict = 0;
+  /* int e_zvertex_strict = 0;
   int e_ECsampling_strict = 0;
   int e_ECoutVin_strict = 0;
   int e_CCthetaMatching_strict = 0;
@@ -237,6 +259,25 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   int pim_vvp_strict = 0; 
   int pim_R1fid_strict = 0;
   int pim_MXcut_strict = 0;
+  */
+ 
+  int e_zvertex_strict = cut_strictness;
+  int e_ECsampling_strict = cut_strictness;
+  int e_ECoutVin_strict = -2;//cut_strictness;
+  int e_CCthetaMatching_strict = 0;//cut_strictness;
+  int e_ECgeometric_strict = -2;//cut_strictness;
+  int e_R1fid_strict = -2;//cut_strictness;
+  int e_R3fid_strict = -2;//cut_strictness;
+  int e_CCphiMatching_strict = cut_strictness;
+  int e_CCfiducial_strict = -2;// cut_strictness;
+  int e_CCnphe_strict = 0;//cut_strictness;
+
+  int pip_vvp_strict = cut_strictness;
+  int pip_R1fid_strict = cut_strictness;
+  int pip_MXcut_strict = cut_strictness; 
+  int pim_vvp_strict = cut_strictness; 
+  int pim_R1fid_strict = cut_strictness;
+  int pim_MXcut_strict = cut_strictness;
 
   if( cut_to_vary < 0 ){
     std::cout <<" NOMINAL - NO CUTS VARIED " << std::endl;;
@@ -290,20 +331,31 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   // %%%%%%%%%% end cut settings %%%%%%%%%
 
   //int do_momCorr_e = 0;
-  int do_momCorr_proton = 0;
-  int do_momCorr_kaon = 0;
+  int do_momCorr_proton = 1;
+  int do_momCorr_kaon = 1;
 
-  double pr_conf = 0.05;// DR
-  double pip_conf = 0.05; 
-  double kp_conf = 0.05;
-  double pr_anticonf = 0.95;
-  double pip_anticonf = 0.95;
-  double kp_anticonf = 0.95;
+  double pr_conf = 0.02;// DR
+  double pip_conf = 0.2; 
+  double kp_conf = 0.3;
+  double pr_anticonf = 0.98;
+  double pip_anticonf = 0.8;
+  double kp_anticonf = 0.7;
+
+  double pim_conf = 0.05;
+  double km_conf = 0.05;
+  double pim_anticonf = 0.95;
+  double km_anticonf = 0.95;
+
+  int tot_good_el = 0;
+  int tot_good_pr = 0;
+  int tot_good_kp = 0;
+  int tot_good_km = 0;
+  
   std::cout << " >> CREATING HISTOGRAMS " << std::endl;
 
   //%%%%%%%%%%%%%%% cut containers for beta MLE parameters %%%%%%%%%%%%%%
   //include run dependence here
-  std::map<int, std::vector<double> > pr_mean_fit = loadBetaParameters("protonBetaFitParametersCLARY.txt");
+  std::map<int, std::vector<double> > pr_mean_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/beta_fits/protonBetaFitParametersRISER.txt");
   std::map< int , std::vector<double> >::iterator it;
   for( it = pr_mean_fit.begin(); it != pr_mean_fit.end(); it++ ){
     std::cout << " FIT PARAMETER " << it->first << std::endl;
@@ -311,17 +363,48 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
     for( std::vector<double>::iterator it2 = (it->second).begin(); it2 != (it->second).end(); ++it2){
       std::cout << " SECTOR VALUES " << *it2 << std::endl;
     }
-
   }
 
-  std::map<int, std::vector<double> > pip_mean_fit = loadBetaParameters("pipMeanBetaFitParametersCLARY.txt");
-  std::map<int, std::vector<double> > kp_mean_fit = loadBetaParameters("kpMeanBetaFitParametersCLARY.txt");
-  std::map<int, std::vector<double> > km_mean_fit = loadBetaParameters("kmMeanBetaFitParametersCLARY.txt");
+  std::map<int, std::vector<double> > pip_mean_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/beta_fits/pipMeanBetaFitParametersRISER.txt");
+  std::map<int, std::vector<double> > pim_mean_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/beta_fits/pimMeanBetaFitParametersCLARY.txt");
+  std::map<int, std::vector<double> > kp_mean_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/beta_fits/kpMeanBetaFitParametersRISER.txt");
+  std::map<int, std::vector<double> > km_mean_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/beta_fits/kmMeanBetaFitParametersCLARY.txt");
 
-  std::map<int, std::vector<double> > pr_sigma_fit = loadBetaParameters("protonSigmaBetaFitPrametersCLARY.txt");//protonSigmaBetaFitParametersCLARY.txt");
-  std::map<int, std::vector<double> > pip_sigma_fit = loadBetaParameters("pipSigmaBetaFitParametersCLARY.txt");
-  std::map<int, std::vector<double> > kp_sigma_fit = loadBetaParameters("kpSigmaBetaFitParametersCLARY.txt");
-  std::map<int, std::vector<double> > km_sigma_fit = loadBetaParameters("kmSigmaBetaFitParametersCLARY.txt");
+  std::map<int, std::vector<double> > pr_sigma_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/beta_fits/protonSigmaBetaFitParmetersRISER.txt");
+  std::map<int, std::vector<double> > pip_sigma_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/beta_fits/pipSigmaBetaFitParametersRISER.txt");
+  std::map<int, std::vector<double> > pim_sigma_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/beta_fits/pimSigmaBetaFitParametersCLARY.txt");
+  std::map<int, std::vector<double> > kp_sigma_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/beta_fits/kpSigmaBetaFitParametersRISER.txt");
+  std::map<int, std::vector<double> > km_sigma_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/kmSigmaBetaFitParametersCLARY.txt");
+
+  for( int p = 0; p < 3; p++ ){
+    std::cout << " DELTAB PARAMETER " << p << std::endl;
+    std::cout << " PIP means fit " << pip_mean_fit[p][0] << " " << pip_mean_fit[p][1] << " " << pip_mean_fit[p][2] << " " << pip_mean_fit[p][3] << " " << pip_mean_fit[p][4] << " " << pip_mean_fit[p][5]  << std::endl;    
+    std::cout << " KP means fit " << kp_mean_fit[p][0] << " " << kp_mean_fit[p][1] << " " << kp_mean_fit[p][2] << " " << kp_mean_fit[p][3] << " " << kp_mean_fit[p][4] << " " << kp_mean_fit[p][5]  << std::endl;    
+    std::cout << " PR means fit " << pr_mean_fit[p][0] << " " << pr_mean_fit[p][1] << " " << pr_mean_fit[p][2] << " " << pr_mean_fit[p][3] << " " << pr_mean_fit[p][4] << " " << pr_mean_fit[p][5]  << std::endl;    
+
+    std::cout << " PIM means fit " << pim_mean_fit[p][0] << " " << pim_mean_fit[p][1] << " " << pim_mean_fit[p][2] << " " << pim_mean_fit[p][3] << " " << pim_mean_fit[p][4] << " " << pim_mean_fit[p][5]  << std::endl;    
+    std::cout << " KM means fit " << km_mean_fit[p][0] << " " << km_mean_fit[p][1] << " " << km_mean_fit[p][2] << " " << km_mean_fit[p][3] << " " << km_mean_fit[p][4] << " " << km_mean_fit[p][5]  << std::endl;    
+  }
+
+  for( int p = 0; p < 3; p++ ){
+    std::cout << " DELTAB SIGMA PARAMETER " << p << std::endl;
+    std::cout << " PIP sigma fit " << pip_sigma_fit[p][0] << " " << pip_sigma_fit[p][1] << " " << pip_sigma_fit[p][2] << " " << pip_sigma_fit[p][3] << " " << pip_sigma_fit[p][4] << " " << pip_sigma_fit[p][5]  << std::endl;    
+    std::cout << " KP sigma fit " << kp_sigma_fit[p][0] << " " << kp_sigma_fit[p][1] << " " << kp_sigma_fit[p][2] << " " << kp_sigma_fit[p][3] << " " << kp_sigma_fit[p][4] << " " << kp_sigma_fit[p][5]  << std::endl;    
+    std::cout << " PR sigma fit " << pr_sigma_fit[p][0] << " " << pr_sigma_fit[p][1] << " " << pr_sigma_fit[p][2] << " " << pr_sigma_fit[p][3] << " " << pr_sigma_fit[p][4] << " " << pr_sigma_fit[p][5]  << std::endl;    
+
+    std::cout << " PIM sigma fit " << pim_sigma_fit[p][0] << " " << pim_sigma_fit[p][1] << " " << pim_sigma_fit[p][2] << " " << pim_sigma_fit[p][3] << " " << pim_sigma_fit[p][4] << " " << pim_sigma_fit[p][5]  << std::endl;    
+    std::cout << " KM sigma fit " << km_sigma_fit[p][0] << " " << km_sigma_fit[p][1] << " " << km_sigma_fit[p][2] << " " << km_sigma_fit[p][3] << " " << km_sigma_fit[p][4] << " " << km_sigma_fit[p][5]  << std::endl;    
+  }
+
+  // load ec sampling fraction cuts
+
+  std::map<int, std::vector<double> > el_ecsf_mean_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/elECSFMeanFitParametersCLARY.txt");
+  std::map<int, std::vector<double> > el_ecsf_sigma_fit = loadBetaParameters("/w/hallb-scifs17exp/clas12/bclary/clas6/mysidis/elECSFSigmaFitParametersCLARY.txt");
+
+  for( int p = 0; p < el_ecsf_mean_fit.size(); p++ ){
+    std::cout << " MEAN SF  " << el_ecsf_mean_fit[p][0] << " " << el_ecsf_mean_fit[p][1] << " " << el_ecsf_mean_fit[p][2] << " " << el_ecsf_mean_fit[p][3] << " " << el_ecsf_mean_fit[p][4] << " " << el_ecsf_mean_fit[p][5] << std::endl;    
+  }
+
 
   //%%%%%%%%%%%%%%% cut container end %%%%%%%%%%%%%%
 
@@ -342,7 +425,7 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   TH2D *h_kp_thetap_pc = new TH2D("h_kp_thetap_pc","h_kp_thetap_pc", 200, 0.0, Beam_Energy, 200, 0.0, 70.0);
   TH2D *h_km_thetap_pc = new TH2D("h_km_thetap_pc","h_km_thetap_pc", 200, 0.0, Beam_Energy, 200, 0.0, 70.0);
   
-  TH2D *h_el_thetaphi = new TH2D("h_el_thetaphi","h_el_thetaphi", 200, 0.0, 60.0, 200, -30.0, 30.0);
+  TH2D *h_el_thetaphi = new TH2D("h_el_thetaphi","h_el_thetaphi", 200, 0.0, 60.0, 200, -180.0, 180.0);
 
   TH2D *h_el_vzphi = new TH2D("h_el_vzphi","h_el_vzphi",200, -35.0, -15.0, 200, -180.0, 180.0 );
   TH2D *h_el_vzphi_vc = new TH2D("h_el_vzphi_vc","h_el_vzphi_vc",200, -35.0, -15.0, 200, -180.0, 180.0 );
@@ -355,6 +438,7 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
 
   TH1D *h_el_q2 = new TH1D("h_el_q2","h_el_q2", 200, 0.0, Beam_Energy);
   TH1D *h_el_q2_pc = new TH1D("h_el_q2_pc","h_el_q2_pc",200, 0.0, Beam_Energy);
+  TH1D *h_w = new TH1D("h_w","h_w", 200, -1.0, 8.0 );
   
   //delta time assuming kaon mass (kaon should be centered about 0)
   TH2D *h_deltime_p_kp = new TH2D("h_deltime_p_kp","h_deltime_p_kp", 200, 0.0, 3.0, 200, -10.0, 10.0 );
@@ -362,12 +446,13 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
 
   TH2D *h_pr_betap = new TH2D("h_pr_betap","h_pr_betap",200, 0.0, 3.0, 200, 0.0, 1.1 );
   TH2D *h_pip_betap = new TH2D("h_pip_betap","h_pip_betap", 200, 0.0, 3.0, 200, 0.0, 1.1 );
+  TH2D *h_pim_betap = new TH2D("h_pim_betap","h_pim_betap", 200, 0.0, 3.0, 200, 0.0, 1.1 );
   TH2D *h_kp_betap = new TH2D("h_kp_betap","h_kp_betap",200, 0.0, 3.0, 200, 0.0, 1.1 );
   TH2D *h_km_betap = new TH2D("h_km_betap","h_km_betap",200, 0.0, 3.0, 200, 0.0, 1.1 );
 
-  TH2D *h_pr_thetaphi = new TH2D("h_pr_thetaphi","h_pr_thetaphi", 200, 0.0, 70.0, 200, -45.0, 45.0);
-  TH2D *h_kp_thetaphi = new TH2D("h_kp_thetaphi","h_kp_thetaphi", 200, 0.0, 70.0, 200, -45.0, 45.0);
-  TH2D *h_km_thetaphi = new TH2D("h_km_thetaphi","h_km_thetaphi", 200, 0.0, 70.0, 200, -45.0, 45.0);
+  TH2D *h_pr_thetaphi = new TH2D("h_pr_thetaphi","h_pr_thetaphi", 200, 0.0, 70.0, 200, -180.0, 180.0);
+  TH2D *h_kp_thetaphi = new TH2D("h_kp_thetaphi","h_kp_thetaphi", 200, 0.0, 70.0, 200, -180.0, 180.0);
+  TH2D *h_km_thetaphi = new TH2D("h_km_thetaphi","h_km_thetaphi", 200, 0.0, 70.0, 200, -180.0, 180.0);
   
   //fiducials plots
   TH2D *h_el_ec = new TH2D("h_el_ec","h_el_ec", 1000, -500, 500, 1000, -500, 500);
@@ -394,7 +479,6 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   TH2D *h_pos_betap = new TH2D("h_pos_betap","h_pos_betap", 200, 0.0, 4.5, 200, 0.0, 1.1);
   TH2D *h_pos_dcr3_b = new TH2D("h_pos_dcr3_b","h_pos_dcr3_b", 500, 50.0, 400.0, 500, -200.0, 200.0);
   
-
   //all negative betas
   TH2D *h_neg_betap = new TH2D("h_neg_betap","h_neg_betap", 200, 0.0, 4.5, 200, 0.0, 1.1);
 
@@ -404,26 +488,54 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   TH1D *h_km_conf = new TH1D("h_km_conf","h_km_conf", 200, 0.0, 1.05);
   TH1D *h_pip_conf = new TH1D("h_pip_conf","h_pip_conf", 200, 0.0, 1.05);
   TH1D *h_pim_conf = new TH1D("h_pim_conf","h_pim_conf", 200, 0.0, 1.05);
+  
+  //hadron vertex position  - electron position plot
+  TH1D *h_poshadron_deltavz = new TH1D("h_poshadron_deltavz","h_poshadron_deltavz",200,-10.0,20.0);
+  TH1D *h_neghadron_deltavz = new TH1D("h_neghadron_deltavz","h_neghadron_deltavz",200,-10.0,20.0);
+
+  TH1D *h_prot_deltavz = new TH1D("h_prot_deltavz","h_prot_deltavz", 200, -10.0, 20.0);
+  TH1D *h_kp_deltavz = new TH1D("h_kp_deltavz","h_kp_deltavz", 200, -10.0, 20.0);
+  TH1D *h_km_deltavz = new TH1D("h_km_deltavz","h_km_deltavz", 200, -10.0, 20.0);
+
+  // mass plot
+  TH1D *h_epX_mass = new TH1D("h_epX_mass","h_epX_mass",200,-1.5,3.0);
+  TH2D *h_epX_mnt_mass = new TH2D("h_epX_mnt_mass","h_epX_mnt_mass",200,0.0,1.10,200,-1.5,3.0);
+  
+  // final kin distributions for particles
+  TH2D *h_el_thetap_pc_final = new TH2D("h_el_thetap_pc_final","h_el_thetap_pc_final", 200, 0.0, 4.5, 200, 0.0, 65.0);
+  TH2D *h_pr_thetap_pc_final = new TH2D("h_pr_thetap_pc_final","h_pr_thetap_pc_final", 200, 0.0, 4.5, 200, 0.0, 70.0);
+  TH2D *h_kp_thetap_pc_final = new TH2D("h_kp_thetap_pc_final","h_kp_thetap_pc_final", 200, 0.0, 4.5, 200, 0.0, 70.0);
+  TH2D *h_km_thetap_pc_final = new TH2D("h_km_thetap_pc_final","h_km_thetap_pc_final", 200, 0.0, 4.5, 200, 0.0, 70.0);
     
+
   std::vector<TH1D*> h_el_sect_p;
+  std::vector<TH1D*> h_el_sect_p_a;
   std::vector<TH1D*> h_pr_sect_p;
   std::vector<TH1D*> h_kp_sect_p;
   std::vector<TH1D*> h_km_sect_p;
   std::vector<TH1D*> h_el_sect_nphe;
+  std::vector<TH1D*> h_el_sect_nphe_a;
   std::vector<TH1D*> h_el_sect_q2;
+  std::vector<TH1D*> h_el_sect_q2_a;
 
   std::vector<TH1D*> h_el_sect_p_pc;
+  std::vector<TH1D*> h_el_sect_p_pc_a;
   std::vector<TH1D*> h_pr_sect_p_pc;
   std::vector<TH1D*> h_kp_sect_p_pc;
   std::vector<TH1D*> h_km_sect_p_pc;
   std::vector<TH1D*> h_el_sect_q2_pc;
+  std::vector<TH1D*> h_el_sect_q2_pc_a;
 
   std::vector<TH2D*> h_el_sect_etotp;
   std::vector<TH2D*> h_el_sect_etotp_pc;
+  std::vector<TH2D*> h_el_sect_etotp_a;
+  std::vector<TH2D*> h_el_sect_etotp_pc_a;
 
   std::vector<TH1D*> h_sect_deltime_p_kp;
   std::vector<TH2D*> h_pr_sect_betap;
   std::vector<TH2D*> h_pip_sect_betap;
+  std::vector<TH2D*> h_pim_sect_betap;
+
   std::vector<TH2D*> h_kp_sect_betap;
   std::vector<TH2D*> h_km_sect_betap;
 
@@ -432,15 +544,26 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   std::vector<TH2D*> h_km_sect_betap_pc;
 
   std::vector<TH2D*> h_el_sect_thetaphi;
+  std::vector<TH2D*> h_el_sect_thetaphi_a;
   std::vector<TH2D*> h_pr_sect_thetaphi;
   std::vector<TH2D*> h_kp_sect_thetaphi;
   std::vector<TH2D*> h_km_sect_thetaphi;
 
   std::vector<TH2D*> h_el_sect_cctheta;
+  std::vector<TH2D*> h_el_sect_cctheta_a;
   std::vector<TH2D*> h_el_sect_ccphi;
+  std::vector<TH2D*> h_el_sect_ccphi_a;
 
   std::vector<TH2D*> h_el_sect_dcr3;
+  std::vector<TH2D*> h_el_sect_dcr3_a;
+
+  std::vector<TH1D*> h_poshadron_sect_deltavz;
+  std::vector<TH1D*> h_neghadron_sect_deltavz;
   
+  std::vector<TH1D*> h_prot_sect_deltavz;
+  std::vector<TH1D*> h_kp_sect_deltavz;
+  std::vector<TH1D*> h_km_sect_deltavz;
+
   // all negative charges plotted 
   std::vector<TH2D*> h_el_sect_etotp_b;
   std::vector<TH2D*> h_el_sect_cctheta_b;
@@ -462,7 +585,20 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
     h_el_sect_cctheta.push_back( new TH2D(Form("h_el_s%d_cctheta",i), Form("h_el_s%d_cctheta",i), 19, 0.0, 19.0, 100, 0.0, 60.0 ) );
     h_el_sect_ccphi.push_back( new TH2D(Form("h_el_s%d_ccphi",i), Form("h_el_s%d_ccphi",i), 19, 0.0, 19.0, 100, 0.0, 360.0 ) );    
     h_el_sect_dcr3.push_back( new TH2D(Form("h_el_s%d_dcr3",i), Form("h_el_s%d_dcr3",i), 500, 50, 400, 500, -200.0, 200) );
-    
+
+    /*h_el_sect_p_a.push_back( new TH1D(Form("h_el_s%d_p_a",i),Form("h_el_s%d_p_a",i), 200, 0.0, Beam_Energy) );
+    h_el_sect_nphe_a.push_back( new TH1D(Form("h_el_s%d_nphe_a",i),Form("h_el_s%d_nphe_a",i), 200, 0.0, 200) );
+    h_el_sect_q2_a.push_back( new TH1D(Form("h_el_s%d_q2_a",i),Form("h_el_s%d_q2_a",i), 200, 0.0, Beam_Energy) );
+    h_el_sect_p_pc_a.push_back( new TH1D(Form("h_el_s%d_p_pc_a",i),Form("h_el_s%d_p_pc_a",i), 200, 0.0, Beam_Energy) );
+    h_el_sect_q2_pc_a.push_back( new TH1D(Form("h_el_s%d_q2_pc_a",i),Form("h_el_s%d_q2_pc_a",i), 200, 0.0, Beam_Energy) );
+    h_el_sect_etotp_a.push_back( new TH2D(Form("h_el_s%d_etotp_a",i),Form("h_el_s%d_etotp_a",i), 200, 0.0, Beam_Energy, 200, 0.0, 0.50) );
+    h_el_sect_etotp_pc_a.push_back( new TH2D(Form("h_el_s%d_etotp_pc_a",i),Form("h_el_s%d_etotp_pc_a",i), 200, 0.0, Beam_Energy, 200, 0.0, 0.50) );
+    h_el_sect_thetaphi_a.push_back( new TH2D(Form("h_el_s%d_thetaphi_a",i),Form("h_el_s%d_thetaphi_a",i), 200, 0.0, 60.0, 200, -30.0, 30.0) );
+    h_el_sect_cctheta_a.push_back( new TH2D(Form("h_el_s%d_cctheta_a",i), Form("h_el_s%d_cctheta_a",i), 19, 0.0, 19.0, 100, 0.0, 60.0 ) );
+    h_el_sect_ccphi_a.push_back( new TH2D(Form("h_el_s%d_ccphi_a",i), Form("h_el_s%d_ccphi_a",i), 19, 0.0, 19.0, 100, 0.0, 360.0 ) );    
+    h_el_sect_dcr3_a.push_back( new TH2D(Form("h_el_s%d_dcr3_a",i), Form("h_el_s%d_dcr3_a",i), 500, 50, 400, 500, -200.0, 200) );
+    */
+
     h_pr_sect_p.push_back( new TH1D(Form("h_pr_s%d_p",i),Form("h_pr_s%d_p",i), 200, 0.0, 4.0) );
     h_pr_sect_p_pc.push_back( new TH1D(Form("h_pr_s%d_p_pc",i),Form("h_pr_s%d_p_pc",i), 200, 0.0, 4.0) );
     h_pr_sect_betap.push_back( new TH2D(Form("h_pr_s%d_betap",i),Form("h_pr_s%d_betap",i), 200, 0.0, 4.0, 200, 0.0, 1.1) );
@@ -484,11 +620,79 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
     h_el_sect_etotp_b.push_back( new TH2D(Form("h_el_s%d_etotp_b",i),Form("h_el_s%d_etotp_b",i), 200, 0.0, Beam_Energy, 200, 0.0, 0.50) );
     h_el_sect_cctheta_b.push_back( new TH2D(Form("h_el_s%d_cctheta_b",i), Form("h_el_s%d_cctheta_b",i), 19, 0.0, 19.0, 100, 0.0, 60.0 ) );
 
+    h_poshadron_sect_deltavz.push_back( new TH1D(Form("h_poshadron_s%d_deltavz",i),Form("h_poshadron_s%d_deltavz",i), 200, -20.0, 20.0 ) );
+    h_neghadron_sect_deltavz.push_back( new TH1D(Form("h_neghadron_s%d_deltavz",i),Form("h_neghadron_s%d_deltavz",i), 200, -20.0, 20.0 ) );
+
+    h_prot_sect_deltavz.push_back( new TH1D(Form("h_prot_s%d_deltavz",i),Form("h_prot_s%d_deltavz",i), 200, -10.0, 20.0) );
+    h_kp_sect_deltavz.push_back( new TH1D(Form("h_kp_s%d_deltavz",i),Form("h_kp_s%d_deltavz",i), 200, -10.0, 20.0) );
+    h_km_sect_deltavz.push_back( new TH1D(Form("h_km_s%d_deltavz",i),Form("h_km_s%d_deltavz",i), 200, -10.0, 20.0) );
+
     h_pos_sect_betap.push_back( new TH2D(Form("h_pos_s%d_betap",i), Form("h_pos_s%d_betap",i), 200, 0.0, 4.5, 200, 0.0, 1.1) );
     h_neg_sect_betap.push_back( new TH2D(Form("h_neg_s%d_betap",i), Form("h_neg_s%d_betap",i), 200, 0.0, 4.5, 200, 0.0, 1.1) );
    
     h_pip_sect_betap.push_back( new TH2D(Form("h_pip_s%d_betap",i), Form("h_pip_s%d_betap",i), 200, 0.0, 4.5, 200, 0.0, 1.1) );
+    h_pim_sect_betap.push_back( new TH2D(Form("h_pim_s%d_betap",i), Form("h_pim_s%d_betap",i), 200, 0.0, 4.5, 200, 0.0, 1.1) );
 
+  }
+
+
+  //cuts on p, vertex, sampling fraction, ec_outer, ec fid, cc theta, r1fid, r3fid, ccphi, cc fid, cc nphe
+  std::map< int, std::vector<TH1D*> > m_h_el_sect_p;
+  std::map< int, std::vector<TH1D*> > m_h_el_sect_vz;
+  std::map< int, std::vector<TH1D*> > m_h_el_sect_corr_vz;
+  std::map< int, std::vector<TH2D*> > m_h_el_sect_etotp;
+  std::map< int, std::vector<TH2D*> > m_h_el_sect_eceo_ecei;
+  std::map< int, std::vector<TH2D*> > m_h_el_sect_ec_pos;
+  std::map< int, std::vector<TH1D*> > m_h_el_sect_cc_nphe;
+  std::map< int, std::vector<TH1D*> > m_h_el_sect_cc;
+  std::map< int, std::vector<TH2D*> > m_h_el_sect_theta_phi;
+  std::map< int, std::vector<TH2D*> > m_h_el_sect_dcr1;
+  std::map< int, std::vector<TH2D*> > m_h_el_sect_dcr3;
+  std::map< int, std::vector<TH2D*> > m_h_el_sect_cc_theta;
+  std::vector<int> el_individual_cut_pass_rate;
+
+  for( int c = 0; c < 11; c++ ){
+    
+    std::vector<TH1D*> h_temp_p;
+    std::vector<TH1D*> h_temp_vz;
+    std::vector<TH1D*> h_temp_corr_vz;
+    std::vector<TH2D*> h_temp_etotp;
+    std::vector<TH2D*> h_temp_eceo_ecei;
+    std::vector<TH2D*> h_temp_ec_pos;
+    std::vector<TH1D*> h_temp_cc_nphe;
+    std::vector<TH1D*> h_temp_cc;
+    std::vector<TH2D*> h_temp_theta_phi;
+    std::vector<TH2D*> h_temp_dcr1;
+    std::vector<TH2D*> h_temp_dcr3;
+    std::vector<TH2D*> h_temp_cc_theta;
+
+    for( int s = 0; s <= 6; s++ ){
+      h_temp_p.push_back(new TH1D(Form("h_el_s%d_cut%d_p",s,c),Form("h_el_s%d_cut%d_p",s,c), 200, 0.0, 5.0) );
+      h_temp_vz.push_back(new TH1D(Form("h_el_s%d_cut%d_vz",s,c),Form("h_el_s%d_cut%d_vz",s,c), 200, -32.0, -16.0) );
+      h_temp_corr_vz.push_back(new TH1D(Form("h_el_s%d_cut%d_corr_vz",s,c),Form("h_el_s%d_cut%d_corr_vz",s,c), 200, -32.0, -16.0) );
+      h_temp_etotp.push_back(new TH2D(Form("h_el_s%d_cut%d_etotp",s,c),Form("h_el_s%d_cut%d_etotp",s,c), 500, 0.0, 6.0, 500, 0.05, 0.5) );
+      h_temp_eceo_ecei.push_back(new TH2D(Form("h_el_s%d_cut%d_ecei_eceo",s,c),Form("h_el_s%d_cut%d_ecei_eceo",s,c), 500, 0.01, 0.5, 500, 0.01, 0.5) );
+      h_temp_ec_pos.push_back(new TH2D(Form("h_el_s%d_cut%d_ec_pos",s,c),Form("h_el_s%d_cut%d_ec_pos",s,c), 1000, -500, 500, 1000, -500, 500) );
+      h_temp_cc_nphe.push_back( new TH1D(Form("h_el_s%d_cut%d_ccnphe",s,c),Form("h_el_s%d_cut%d_ccnphe",s,c), 100, 0.0, 100.0) );
+      h_temp_theta_phi.push_back( new TH2D(Form("h_el_s%d_cut%d_theta_phi",s,c),Form("h_el_s%d_cut%d_theta_phi",s,c), 500, -30, 30, 500, 0.0, 65) );
+      h_temp_dcr1.push_back( new TH2D(Form("h_el_s%d_cut%d_dcr1",s,c),Form("h_el_s%d_cut%d_dcr1",s,c), 500, -100, 100, 500, -100.0, 100.0) ); 
+      h_temp_dcr3.push_back( new TH2D(Form("h_el_s%d_cut%d_dcr3",s,c),Form("h_el_s%d_cut%d_dcr3",s,c), 500, 50.0, 400.0, 500, -200, 200) ); 
+      h_temp_cc_theta.push_back( new TH2D(Form("h_el_s%d_cut%d_cc_theta",s,c),Form("h_el_s%d_cut%d_cc_theta",s,c), 17, 0, 17, 200, 0.0, 60.0) ); 				
+    }
+
+    
+    m_h_el_sect_p[c] = h_temp_p;
+    m_h_el_sect_vz[c] = h_temp_vz;
+    m_h_el_sect_corr_vz[c] = h_temp_corr_vz;
+    m_h_el_sect_etotp[c] = h_temp_etotp;
+    m_h_el_sect_eceo_ecei[c] = h_temp_eceo_ecei;
+    m_h_el_sect_ec_pos[c] = h_temp_ec_pos;
+    m_h_el_sect_cc_nphe[c] = h_temp_cc_nphe;
+    m_h_el_sect_theta_phi[c] = h_temp_theta_phi;
+    m_h_el_sect_dcr1[c] = h_temp_dcr1;
+    m_h_el_sect_dcr3[c] = h_temp_dcr3;
+    m_h_el_sect_cc_theta[c] = h_temp_cc_theta;
+    el_individual_cut_pass_rate.push_back(0);
   }
 
   int limit = h22chain->GetEntries() / 100;
@@ -496,7 +700,8 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
   
   std::cout << " TOTAL ENTRIES TO PROCESS " << h22chain->GetEntries() << std::endl;
   for(int i = 0; i < h22chain->GetEntries(); i++){
-    if( i == 0 ) std::cout << " >> EXECUTING MAIN LOOP ENTRY 0 " << std::endl;
+    //if( i == 0 ) 
+    std::cout << " >> EXECUTING MAIN LOOP ENTRY " << i << std::endl;
     //std::cout << i << std::endl;
     if ( i % limit == 0 ){
       double completed = (double)i / (double)h22chain->GetEntries();
@@ -504,7 +709,9 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
     }
     
     h22chain->GetEntry(i);
-    
+    //std::cout << " starting event " << i << std::endl;
+    //std::cout << " getting run number " << std::endl;
+
     string currentrunno_string = "-123";
     if(ExpOrSim == 1)
       {
@@ -517,292 +724,493 @@ int my_phi6(int iteration_number = 0,  int filestart = 1, int fileend = 2, int E
     int n_good_el = 0;
     int n_good_pr = 0;
     int n_good_kp = 0;
+    int n_good_km = 0;
     int n_good_pip = 0;
+    int n_good_pim = 0;
 
     TVector3 V3_e[2]; // 2 for gen(0) and rec(1)
     TLorentzVector V4_e[2];
     TLorentzVector V4_e_uncorr[2];
         
+    //reset lv of el
+    el.SetPxPyPzE(0,0,0,0);
+    pr.SetPxPyPzE(0,0,0,0);
+    kp.SetPxPyPzE(0,0,0,0);
+
     // %%%%% electron ID %%%%%
     int e_index[2] = {-123,-123};
     //gets the gpart index for the electron
-    e_index[1] = eID(gpart, q, p, cc_sect, sc_sect, ec_sect, dc_sect, cx, cy, cz, tl1_x, tl1_y, tl3_x, tl3_y, tl3_z, tl3_cx, tl3_cy, tl3_cz, e_zvertex_strict, vz, vy, vx, e_ECsampling_strict, ExpOrSim, etot, e_ECoutVin_strict, ec_ei, ech_x, ech_y, ech_z, e_CCthetaMatching_strict, cc_segm, e_ECgeometric_strict, e_R1fid_strict, e_R3fid_strict, e_CCphiMatching_strict, sc_pd, e_CCfiducial_strict, el_pass_rate);
+    e_index[1] = eID(gpart, q, p, cc_sect, sc_sect, ec_sect, dc_sect, cx, cy, cz, tl1_x, tl1_y, tl3_x, tl3_y, tl3_z, tl3_cx, tl3_cy, tl3_cz, e_zvertex_strict, vz, vy, vx, e_ECsampling_strict,el_ecsf_mean_fit,el_ecsf_sigma_fit, ExpOrSim, etot, e_ECoutVin_strict, ec_ei, ec_eo, ech_x, ech_y, ech_z, e_CCthetaMatching_strict, cc_segm, e_ECgeometric_strict, e_R1fid_strict, e_R3fid_strict, e_CCphiMatching_strict, sc_pd, e_CCfiducial_strict, e_CCnphe_strict, nphe, el_pass_rate, m_h_el_sect_p, m_h_el_sect_etotp, m_h_el_sect_eceo_ecei, m_h_el_sect_ec_pos, m_h_el_sect_cc_nphe, m_h_el_sect_theta_phi, m_h_el_sect_dcr1, m_h_el_sect_dcr3, m_h_el_sect_cc_theta, m_h_el_sect_vz,m_h_el_sect_corr_vz);
+    //std::cout << " finished electron index is:  " << index[1] << std::endl;
     //%%%%% end electron ID %%%%%    
         
-    if(e_index[1] > -122){
+    if(e_index[1] >= 0 ){
+      //std::cout << " final electron index " << e_index[1] << std::endl;
       V3_e[1].SetXYZ(p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]]);
       V4_e[1].SetXYZT(V3_e[1].X(), V3_e[1].Y(), V3_e[1].Z(), sqrt(V3_e[1].Mag2() + pow(e_mass,2)));
       V4_e_uncorr[1].SetXYZT(V3_e[1].X(), V3_e[1].Y(), V3_e[1].Z(), sqrt(V3_e[1].Mag2() + pow(e_mass,2)));
+      //std::cout << " electron momentum before MOMCORR " << V4_e[1].Px() << "  " << V4_e[1].Py() << " " << V4_e[1].Pz() << " " << V4_e[1].E() << std::endl;
       if(do_momCorr_e && ExpOrSim == 1) V4_e[1] = MomCorr->PcorN(V4_e[1], -1, 11);
+      //std::cout << " electron momentum after MOMCORR " << V4_e[1].Px() << "  " << V4_e[1].Py() << " " << V4_e[1].Pz() << " " << V4_e[1].E() << std::endl;
+
       n_good_el++;
       h_el_thetap_pc->Fill(V4_e[1].P(), 180.0/TMath::Pi() * V4_e[1].Theta() );
-      //final_el->SetXYZT(V4_e[1].X(), V4_e[1].Y(), V4_e[1].Z(), V4_e[1].T() );
+      final_el->SetXYZT(V4_e[1].X(), V4_e[1].Y(), V4_e[1].Z(), V4_e[1].T() );
+      el.SetXYZT(V4_e[1].X(), V4_e[1].Y(), V4_e[1].Z(), V4_e[1].T() );
     }
     
     TVector3 V3_H[2];
     TLorentzVector V4_q[2], V4_H[2];    
     
-    for( int i = 0; i < gpart; i++ ){
-      if( q[i] < 0 ){
+    for( int j = 0; j < gpart; j++ ){
+      if( q[j] < 0 ){
 
 	//plot fiducial regions  and sampling fraction for all negatives 
 	double ectot = ec_ei[e_index[1]] + ec_eo[e_index[1]];
-	h_el_etotp_b->Fill(p[e_index[1]],ectot/p[e_index[1]]);
+	h_el_etotp_b->Fill(p[e_index[1]],etot[e_index[1]]/p[e_index[1]]);
 
-      	h_el_ec_b->Fill(ech_x[i], ech_y[i]);
-	h_el_dcr1_b->Fill(tl1_x[i], tl1_y[i]);
-	h_el_dcr3_b->Fill(tl3_x[i], tl3_y[i]);
+      	h_el_ec_b->Fill(ech_x[j], ech_y[j]);
+	h_el_dcr1_b->Fill(tl1_x[j], tl1_y[j]);
+	h_el_dcr3_b->Fill(tl3_x[j], tl3_y[j]);
 	
-	int temp_ec_sector = dc_sect[i];
-	int temp_cc_sector = cc_sect[i];
+	int temp_ec_sector = dc_sect[j];
+	int temp_cc_sector = cc_sect[j];
 	if( temp_ec_sector != 0 ){
-	  h_el_sect_etotp_b[temp_ec_sector-1]->Fill(p[i],ectot/p[i]);
+	  h_el_sect_etotp_b[temp_ec_sector-1]->Fill(p[j],etot[e_index[1]]/p[j]);
 	}
 	if ( temp_cc_sector != 0 ){
-	  int pmt = cc_segm[i]/1000 -1;
-	  int segment = cc_segm[i]%1000/10;
-	  Float_t thetaCC = 57.2957795*get_thetaCC(tl3_x[i], tl3_y[i], tl3_z[i], tl3_cx[i], tl3_cy[i], tl3_cz[i]);
+	  int pmt = cc_segm[j]/1000 -1;
+	  int segment = cc_segm[j]%1000/10;
+	  Float_t thetaCC = 57.2957795*get_thetaCC(tl3_x[j], tl3_y[j], tl3_z[j], tl3_cx[j], tl3_cy[j], tl3_cz[j]);
 	  h_el_sect_cctheta_b[temp_cc_sector-1]->Fill(segment,thetaCC);
 	}
       }     
       if( e_index[1] >= 0 ){
-	if( q[i] > 0 ){
-	   double pos_beta = getBeta(i, e_index, sc_sect, dc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
-	  h_pos_betap->Fill(p[i], pos_beta);
-	  if( dc_sect[i] != 0 ){
-	    h_pos_sect_betap[dc_sect[i] - 1]->Fill(p[i], pos_beta);
-	    h_pos_dcr3_b->Fill(tl3_x[i], tl3_y[i]);
+	  double hadron_corr_vz  = getCorrZ(ExpOrSim, vx[j], vy[j], vz[j], p[j]*cx[j], p[j]*cy[j], p[j]*cz[j], dc_sect[j]);
+	  double el_corr_vz = getCorrZ(ExpOrSim, vx[e_index[1]], vy[e_index[1]], vz[e_index[1]], p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]], dc_sect[e_index[1]]);
+	if( q[j] > 0 ){
+	   double pos_beta = getBeta(j, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
+	  h_pos_betap->Fill(p[j], pos_beta);
+	  if( dc_sect[j] != 0 ){
+	    h_pos_sect_betap[dc_sect[j] - 1]->Fill(p[j], pos_beta);
+	    h_pos_dcr3_b->Fill(tl3_x[j], tl3_y[j]);
 	  }
+	  h_poshadron_deltavz->Fill( el_corr_vz - hadron_corr_vz );
 	}
-	else if( q[i] < 0 ){
-	  double neg_beta = getBeta(i, e_index, sc_sect, dc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
-	  h_neg_betap->Fill(p[i], neg_beta);
-	  if( dc_sect[i] != 0 ){
-	    h_neg_sect_betap[dc_sect[i] - 1]->Fill(p[i], neg_beta);	    
+	else if( q[j] < 0 ){
+	  double neg_beta = getBeta(j, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
+	  h_neg_betap->Fill(p[j], neg_beta);
+	  if( dc_sect[j] != 0 ){
+	    h_neg_sect_betap[dc_sect[j] - 1]->Fill(p[j], neg_beta);	    
 	  }
+	  h_neghadron_deltavz->Fill( el_corr_vz - hadron_corr_vz );
 	}
       }
-
     }
 
+    int prot_index = -1;
     if( e_index[1] >= 0 ){
+      std::cout << " Current Event Number with Electron Detected " << i << " ELECTRON INDEX " << e_index[1] << std::endl;
+      //added dis cuts here to match davids
+      double Q2test = -(V4k - el).Mag2();
+      double Wtest = sqrt(V4ISproton.M()*V4ISproton.M() - Q2test + 2*V4ISproton.M()*(V4k -el).E());
 
-      //%%%%%%%%%% fill electron plots %%%%%%%%%%%%
-      int golden_electron = e_index[1];
-      
-      if( dc_sect[e_index[1]] != 0 && cc_sect[e_index[1]] != 0 && ec_sect[e_index[1]] != 0 ){
-	h_el_p->Fill(p[e_index[1]]);
-	h_el_p_pc->Fill(V4_e[1].P());
-	h_el_thetaphi->Fill( 180.0/TMath::Pi() * V4_e[1].Theta(), 180.0/TMath::Pi() * V4_e[1].Phi());
-	//std::cout << " vz " << vz[e_index[1]] << std::endl;
-	h_el_vzphi->Fill( vz[e_index[1]], 180.0/TMath::Pi() * V4_e_uncorr[1].Phi() );
-	double vz_corr = getCorrZ(ExpOrSim, vx[e_index[1]], vy[e_index[1]], vz[e_index[1]], p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]], dc_sect[e_index[1]]);
-	h_el_vzphi_vc->Fill( vz_corr, 180.0/TMath::Pi() * V4_e_uncorr[1].Phi() );
-	h_el_vzphi_vcpc->Fill( vz_corr, 180.0/TMath::Pi() * V4_e[1].Phi() );
-	h_el_nphe->Fill(nphe[e_index[1]]);
-	double ectot = ec_ei[e_index[1]] + ec_eo[e_index[1]];
-	h_el_etotp->Fill(p[e_index[1]],ectot/p[e_index[1]]);
-	h_el_etotp_pc->Fill( V4_e[1].P(), ectot/V4_e[1].P() );     
+      std::cout << " W " << Wtest << " q2 " << Q2test << std::endl;
+      if( Wtest > 2.0 && Q2test > 1.0 ){
+	std::cout << " [Loop] Current Event Number With Electron Detected AND Meets W>2 and Q2>1 " << i << std::endl;
+	//%%%%%%%%%% fill electron plots %%%%%%%%%%%%
+	int golden_electron = e_index[1];
 	
-	//fiducial plots
-	h_el_ec->Fill(ech_x[e_index[1]], ech_y[e_index[1]]);
-	h_el_dcr1->Fill(tl1_x[e_index[1]], tl1_y[e_index[1]]);
-	h_el_dcr3->Fill(tl3_x[golden_electron], tl3_y[golden_electron]);
-
-	Float_t thetaCC = 57.2957795*get_thetaCC(tl3_x[golden_electron], tl3_y[golden_electron], tl3_z[golden_electron], tl3_cx[golden_electron], tl3_cy[golden_electron], tl3_cz[golden_electron]);
-	Float_t phi = atan3(cy[golden_electron],cx[golden_electron])*57.2957795;
-	      
-	//now per sector - shifted from 0 - 6 to -1 to 5, if -1 then no hit in detector sectors
-	int dc_sector = dc_sect[e_index[1]]-1;
-	int ec_sector = ec_sect[e_index[1]]-1;
-	int cc_sector = cc_sect[e_index[1]]-1;
-	//std::cout << " " << dc_sector <<  " " << ec_sector << " " << cc_sector << std::endl;
-	if( dc_sector >= 0 ){
-	  h_el_sect_p[dc_sector]->Fill(p[e_index[1]]);
-	  h_el_sect_p_pc[dc_sector]->Fill(V4_e[1].P());
-	  h_el_sect_thetaphi[dc_sector]->Fill(180.0/TMath::Pi() * V4_e[1].Theta(), 180.0/TMath::Pi() * V4_e[1].Phi());
-	}
-	if( cc_sector >= 0 ){
-	  h_el_sect_nphe[cc_sector]->Fill( nphe[e_index[1]] );
-	  int pmt = cc_segm[golden_electron]/1000 -1;
-	  int segment = cc_segm[golden_electron]%1000/10;
-	  h_el_sect_cctheta[cc_sector]->Fill(segment, thetaCC);
-	  //std::cout << " >> phi " << phi << std::endl;
-	  h_el_sect_ccphi[cc_sector]->Fill(segment, phi);
-	}
-	if( ec_sector >= 0 ){
-	  h_el_sect_etotp[ec_sector]->Fill(p[e_index[1]],ectot/p[e_index[1]]);
-	  h_el_sect_etotp_pc[ec_sector]->Fill( V4_e[1].P(), ectot/V4_e[1].P() );      
-	}
-      }
-      //%%%%%%%%%%%% end electron plots %%%%%%%%%%%%
-                 
-
-      //%%%%%%%%%%%% begin hadron analysis %%%%%%%%%%%%
-      //std::cout << " proton pid " << std::endl;
-      std::map<int, std::vector<double> > proton_pid = hadronMLEID(proton_id, gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict, pr_mean_fit, pip_mean_fit, kp_mean_fit, pr_sigma_fit, pip_sigma_fit, kp_sigma_fit, pr_conf, pip_conf, kp_conf, pr_anticonf, pip_anticonf, kp_anticonf);
-      //std::cout << " kp pid " << std::endl;
-
-      //std::cout << " proton pid size " << proton_pid[0].size() << std::endl;
-
-      std::map<int, std::vector<double> > kaon_pid = hadronMLEID(kaon_plus_id, gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict, pr_mean_fit, pip_mean_fit, kp_mean_fit, pr_sigma_fit, pip_sigma_fit, kp_sigma_fit, pr_conf, pip_conf, kp_conf, pr_anticonf, pip_anticonf, kp_anticonf);
-      ///std::cout << " pip pid " << std::endl;
-
-      std::map<int, std::vector<double> > pip_pid = hadronMLEID(pion_plus_id, gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict, pr_mean_fit, pip_mean_fit, kp_mean_fit, pr_sigma_fit, pip_sigma_fit, kp_sigma_fit, pr_conf, pip_conf, kp_conf, pr_anticonf, pip_anticonf, kp_anticonf);
-      //std::cout << " pion pid size " << pip_pid[0].size() << std::endl;
-      //std::cout << " kaon pid size " << kaon_pid[0].size() << std::endl;
-
-      //add negative hadron id here 
-      //
-
-
-      TVector3 V3_kp[2], V3_prot[2], V3_pip[2]; // 2 for gen(0) and rec(1)
-      TLorentzVector V4_kp[2], V4_prot[2], V4_pip[2];
-      int prot_index = proton_pid[2212][0];
-      int kp_index = kaon_pid[321][0];
-      int pip_index = pip_pid[211][0];
-      
-      TVector3 V3_km[2], V3_pim[2];
-      TLorentzVector V4_km[2], V4_pim[2];
-      //int pim_index = pim_pid[-211][0];
-      //int km_index = kaonM_pid[-321][0];
-      
-      double temp_prot_conf = -1.0;
-      double temp_kp_conf = -1.0;
-      double temp_pip_conf = -1.0;
-
-      if( pip_index > 0 ) temp_pip_conf = pip_pid[211][1];
-
-      temp_prot_conf = proton_pid[2212][1];
-      temp_kp_conf = kaon_pid[321][1];
-      temp_pip_conf = pip_pid[211][1];
-
-      //std::cout << " hadron conf " << temp_prot_conf << " " << temp_kp_conf << " " << temp_pip_conf << std::endl;
-      //std::cout << " hadron index " << prot_index << " " << kp_index << " " << pip_index << std::endl;
-
-      if( prot_index > 0 ){
-	//std::cout << " here " << std::endl;
-	pr_conflvl = proton_pid[2212][1];	
-	//std::cout << " prot conf " << pr_conflvl << std::endl;
-	h_prot_conf->Fill(pr_conflvl);
-	V3_prot[1].SetXYZ(p[prot_index]*cx[prot_index], p[prot_index]*cy[prot_index], p[prot_index]*cz[prot_index]);
-	V4_prot[1].SetXYZT(V3_prot[1].X(), V3_prot[1].Y(), V3_prot[1].Z(), sqrt(V3_prot[1].Mag2() + pow(prot_mass,2)));
-	if(do_momCorr_proton && ExpOrSim == 1) V4_prot[1] = MomCorr->PcorN(V4_prot[1], 1, 2212);
-	n_good_pr++;
-	//final_pr->SetXYZT(V4_prot[1].X(),V4_prot[1].Y(),V4_prot[1].Z(),V4_prot[1].T()) ;
-
-	if ( temp_prot_conf > pr_conf ){ // && temp_pip_conf < pip_anticonf  && temp_kp_conf < pip_anticonf ){ 	  
-	  //std::cout << " filling " << std::endl;
-	  double pr_beta = getBeta(prot_index, e_index, sc_sect, dc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);	
-	  h_pr_betap->Fill(V4_prot[1].P(), pr_beta);
-	  h_pr_thetaphi->Fill(180.0/TMath::Pi() * V4_prot[1].Theta(), 180.0/TMath::Pi() * V4_prot[1].Phi());
+	if( dc_sect[e_index[1]] != 0 && cc_sect[e_index[1]] != 0 && ec_sect[e_index[1]] != 0 ){
+	  h_el_p->Fill(p[e_index[1]]);
+	  h_el_p_pc->Fill(V4_e[1].P());
+	  h_el_thetaphi->Fill( 180.0/TMath::Pi() * V4_e[1].Theta(), 180.0/TMath::Pi() * V4_e[1].Phi());
+	  //std::cout << " vz " << vz[e_index[1]] << std::endl;
+	  h_el_vzphi->Fill( vz[e_index[1]], 180.0/TMath::Pi() * V4_e_uncorr[1].Phi() );
+	  double vz_corr = getCorrZ(ExpOrSim, vx[e_index[1]], vy[e_index[1]], vz[e_index[1]], p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]], dc_sect[e_index[1]]);
+	  h_el_vzphi_vc->Fill( vz_corr, 180.0/TMath::Pi() * V4_e_uncorr[1].Phi() );
+	  h_el_vzphi_vcpc->Fill( vz_corr, 180.0/TMath::Pi() * V4_e[1].Phi() );
+	  h_el_nphe->Fill(nphe[e_index[1]]);
+	  double ectot = ec_ei[e_index[1]] + ec_eo[e_index[1]];
+	  h_el_etotp->Fill(p[e_index[1]],etot[e_index[1]]/p[e_index[1]]);
+	  h_el_etotp_pc->Fill( V4_e[1].P(), etot[e_index[1]]/V4_e[1].P() );     
 	  
-	  h_pr_thetap_pc->Fill(V4_prot[1].P(), 180.0/TMath::Pi() * V4_prot[1].Theta());
-
+	  //fiducial plots
+	  h_el_ec->Fill(ech_x[e_index[1]], ech_y[e_index[1]]);
+	  h_el_dcr1->Fill(tl1_x[e_index[1]], tl1_y[e_index[1]]);
+	  h_el_dcr3->Fill(tl3_x[golden_electron], tl3_y[golden_electron]);
 	  
-	  //std::cout << " >> DC SECTOR FOR PROTON " << " "  << " gpart " << gpart << std::endl;       
-	  if( dc_sect[prot_index] != 0 ){
-	    //std::cout << " >> DC SECTOR FOR PROTON " << dc_sect[prot_index] - 1 << std::endl;
-	    h_pr_sect_p[dc_sect[prot_index]-1]->Fill(p[prot_index]);
-	    h_pr_sect_p_pc[dc_sect[prot_index]-1]->Fill(V4_prot[1].P());
-	    h_pr_sect_betap[dc_sect[prot_index]-1]->Fill(p[prot_index], pr_beta);
-	    h_pr_sect_betap_pc[dc_sect[prot_index]-1]->Fill(V4_prot[1].P(), pr_beta);
-	    h_pr_sect_thetaphi[dc_sect[prot_index]-1]->Fill(180.0/TMath::Pi() * V4_prot[1].Theta(), 180.0/TMath::Pi() * V4_prot[1].Phi());
-	    h_pr_dcr1->Fill(tl1_x[prot_index], tl1_y[prot_index]);
-	    h_pr_dcr3->Fill(tl3_x[prot_index], tl3_y[prot_index]);
+	  Float_t thetaCC = 57.2957795*get_thetaCC(tl3_x[golden_electron], tl3_y[golden_electron], tl3_z[golden_electron], tl3_cx[golden_electron], tl3_cy[golden_electron], tl3_cz[golden_electron]);
+	  Float_t phi = atan3(cy[golden_electron],cx[golden_electron])*57.2957795;
+	  
+	  //now per sector - shifted from 0 - 6 to -1 to 5, if -1 then no hit in detector sectors
+	  int dc_sector = dc_sect[e_index[1]]-1;
+	  int ec_sector = ec_sect[e_index[1]]-1;
+	  int cc_sector = cc_sect[e_index[1]]-1;
+	  //std::cout << " " << dc_sector <<  " " << ec_sector << " " << cc_sector << std::endl;
+	  if( dc_sector >= 0 ){
+	    h_el_sect_p[dc_sector]->Fill(p[e_index[1]]);
+	    h_el_sect_p_pc[dc_sector]->Fill(V4_e[1].P());
+	    h_el_sect_thetaphi[dc_sector]->Fill(180.0/TMath::Pi() * V4_e[1].Theta(), 180.0/TMath::Pi() * V4_e[1].Phi());
+	  }
+	  if( cc_sector >= 0 ){
+	    h_el_sect_nphe[cc_sector]->Fill( nphe[e_index[1]] );
+	    int pmt = cc_segm[golden_electron]/1000 -1;
+	    int segment = cc_segm[golden_electron]%1000/10;
+	    h_el_sect_cctheta[cc_sector]->Fill(segment, thetaCC);
+	    //std::cout << " >> phi " << phi << std::endl;
+	    h_el_sect_ccphi[cc_sector]->Fill(segment, phi);
+	  }
+	  if( ec_sector >= 0 ){
+	    //bool testec = e_ECsampling_pass(0, 1, ec_sector, ( ec_ei[e_index[1]] + ec_eo[e_index[1]]), p[e_index[1]], el_ecsf_mean_fit, el_ecsf_sigma_fit );
+	    //if( testec ){
+	    h_el_sect_etotp[ec_sector]->Fill(p[e_index[1]],etot[e_index[1]]/p[e_index[1]]);
+	    h_el_sect_etotp_pc[ec_sector]->Fill( V4_e[1].P(), etot[e_index[1]]/V4_e[1].P() );      	  
 	  }
 	}
-      }
+	//%%%%%%%%%%%% end electron plots %%%%%%%%%%%%
+	
+	//std::cout << " begin hadron analysis " << std::endl;
+	//%%%%%%%%%%%% begin hadron analysis %%%%%%%%%%%%
+	//std::cout << " proton pid " << std::endl;
+	
+	//nathans proton id to check my results
+	// %%%%% hadron ID %%%%%
+	int prot_ind[2];
+	int pip_ind[2];
+	int pim_ind[2];
+	//if(e_index[1] >= 0)
+	//	{
+	//vector<int> hadronIndices = hadronID(gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, mcp, mcphi, mctheta, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict);
+	//pip_ind[1] = hadronIndices[0];
+	//pim_ind[1] = hadronIndices[1];
+	//prot_ind[1] = hadronIndices[2];
+	//}
+	
+	//TVector3 V3_pip[2], V3_pim[2], V3_prot[2]; // 2 for gen(0) and rec(1)
+	//TLorentzVector V4_pip[2], V4_pim[2], V4_prot[2];
+	
+	//int prot_index = prot_ind[1];
+	// %%%%% end hadron ID %%%%%
+	
+	
+	pr_conflvl = -1.0;
+	kp_conflvl = -1.0;
+	km_conflvl = -1.0;
+	pip_conflvl = -1.0;
+	pim_conflvl = -1.0;
+      	
+	std::cout << " proton pid " << std::endl;
+	std::map<int, std::vector<double> > proton_pid = hadronMLEID(proton_id, gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict, pr_mean_fit, pip_mean_fit, kp_mean_fit, pr_sigma_fit, pip_sigma_fit, kp_sigma_fit, pr_conf, pip_conf, kp_conf, pr_anticonf, pip_anticonf, kp_anticonf);
+	std::cout << " proton pid size " << proton_pid[0].size() << std::endl;
+	
+	std::cout << " kp pid " << std::endl;
+	std::map<int, std::vector<double> > kaon_pid = hadronMLEID(kaon_plus_id, gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict, pr_mean_fit, pip_mean_fit, kp_mean_fit, pr_sigma_fit, pip_sigma_fit, kp_sigma_fit, pr_conf, pip_conf, kp_conf, pr_anticonf, pip_anticonf, kp_anticonf);
+	std::cout << " kaon pid size " << kaon_pid[0].size() << std::endl;
+	
+	std::cout << " pip pid " << std::endl;
+	std::map<int, std::vector<double> > pip_pid = hadronMLEID(pion_plus_id, gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict, pr_mean_fit, pip_mean_fit, kp_mean_fit, pr_sigma_fit, pip_sigma_fit, kp_sigma_fit, pr_conf, pip_conf, kp_conf, pr_anticonf, pip_anticonf, kp_anticonf);
+	std::cout << " pion pid size " << pip_pid[0].size() << std::endl;
+	
+	//add negative hadron id here 
+	std::cout << " km pid " << std::endl;
+	std::map<int, std::vector<double> > kaonM_pid = hadronNegMLEID(kaon_minus_id, gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict, pim_mean_fit, km_mean_fit, pim_sigma_fit, km_sigma_fit, pim_conf, km_conf, pim_anticonf, km_anticonf);
+	std::cout << " kaon minus pid size " << kaonM_pid[0].size() << std::endl;
+
+	std::cout << " pim pid " << std::endl;	
+	std::map<int, std::vector<double> > pim_pid = hadronNegMLEID(pion_minus_id, gpart, e_index, q, p, sc_sect, dc_sect, sc_t, sc_r, sc_pd, pip_vvp_strict, pip_R1fid_strict, pip_MXcut_strict, ExpOrSim, ec_ei, ec_sect, cc_sect, nphe, ec_eo, cx, cy, cz, b, tl1_x, tl1_y, V4_H, currentrunno, pim_vvp_strict, pim_R1fid_strict, pim_MXcut_strict, pim_mean_fit, km_mean_fit, pim_sigma_fit, km_sigma_fit, pim_conf, km_conf, pim_anticonf, km_anticonf);
+	std::cout << " pion minus  pid size " << pim_pid[0].size() << std::endl;
+	
+
+	TVector3 V3_kp[2], V3_prot[2], V3_pip[2]; // 2 for gen(0) and rec(1)
+	TLorentzVector V4_kp[2], V4_prot[2], V4_pip[2];
+	prot_index = (int)proton_pid[2212][0];
+	int kp_index = (int)kaon_pid[321][0];
+	int pip_index = (int)pip_pid[211][0];
       
-      if( kp_index > 0 ){
-	kp_conflvl = kaon_pid[321][1];
-	h_kp_conf->Fill(kp_conflvl);
+	TVector3 V3_km[2], V3_pim[2];
+	TLorentzVector V4_km[2], V4_pim[2];
+	int pim_index = (int)pim_pid[-211][0];
+	int km_index = (int)kaonM_pid[-321][0];
+      
+	double temp_prot_conf = -1.0;
+	double temp_kp_conf = -1.0;
+	double temp_pip_conf = -1.0;
 
-	V3_kp[1].SetXYZ(p[kp_index]*cx[kp_index], p[kp_index]*cy[kp_index], p[kp_index]*cz[kp_index]);
-	V4_kp[1].SetXYZT(V3_kp[1].X(), V3_kp[1].Y(), V3_kp[1].Z(), sqrt(V3_kp[1].Mag2() + pow(kp_mass,2)));
-	if(do_momCorr_kaon && ExpOrSim == 1) V4_kp[1] = MomCorr->PcorN(V4_kp[1], 1, 321);
-	final_kp->SetXYZT(V4_kp[1].X(),V4_kp[1].Y(),V4_kp[1].Z(),V4_kp[1].T()) ;
-	n_good_kp++;
+	double temp_km_conf = -1.0;
+	double temp_pim_conf = -1.0;
 
-	if ( temp_kp_conf > kp_conf ){//&& temp_pip_conf < pip_anticonf  && temp_prot_conf < pr_anticonf ){ 	  
-	  
-	  double kp_beta = getBeta(kp_index, e_index, sc_sect, dc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
-	  h_kp_betap->Fill(V4_kp[1].P(), kp_beta);
-	  h_kp_thetaphi->Fill(180.0/TMath::Pi() * V4_kp[1].Theta(), 180.0/TMath::Pi() * V4_kp[1].Phi());
-	  
-	  h_kp_thetap_pc->Fill(V4_kp[1].P(), 180.0/TMath::Pi() * V4_kp[1].Theta());
-	  
-	  if( dc_sect[kp_index] != 0 ){
-	    h_kp_sect_p[dc_sect[kp_index]-1]->Fill(p[kp_index]);
-	    h_kp_sect_p_pc[dc_sect[kp_index]-1]->Fill(V4_kp[1].P());
-	    h_kp_sect_betap[dc_sect[kp_index]-1]->Fill(p[kp_index], kp_beta);
-	    h_kp_sect_betap_pc[dc_sect[kp_index]-1]->Fill(V4_kp[1].P(), kp_beta);
-	    //std::cout << " >> " << dc_sect[kp_index] - 1 << " " <<  180.0/TMath::Pi() * V4_kp[1].Theta() << " " << 180.0/TMath::Pi() * V4_kp[1].Phi()<< std::endl;
-	    h_kp_sect_thetaphi[dc_sect[kp_index]-1]->Fill(180.0/TMath::Pi() * V4_kp[1].Theta(), 180.0/TMath::Pi() * V4_kp[1].Phi());
-	    h_kp_dcr1->Fill(tl1_x[kp_index], tl1_y[kp_index]);
-	    h_kp_dcr3->Fill(tl3_x[kp_index], tl3_y[kp_index]);
+	if( pip_index > 0 ) temp_pip_conf = pip_pid[211][1];
 
-	  }	
+	temp_prot_conf = proton_pid[2212][1];
+	temp_kp_conf = kaon_pid[321][1];
+	temp_pip_conf = pip_pid[211][1];
+
+	temp_km_conf = kaonM_pid[-321][1];
+	temp_pim_conf = pim_pid[-211][1];
+      
+
+	std::cout << "[myphi6] hadron conf " << temp_prot_conf << " " << temp_kp_conf << " " << temp_pip_conf << std::endl;
+	std::cout << "[myphi6] hadron index " << prot_index << " " << kp_index << " " << pip_index << std::endl;
+      
+	if( prot_index > 0 && prot_index != kp_index && prot_index != pip_index ){
+	  bool prot_deltavz_pass = hadronDeltaVzPass(ExpOrSim,vx,vy,vz,p,cx,cy,cz,dc_sect,prot_index,e_index);
+	  if( prot_deltavz_pass ){
+	    //std::cout << " here " << std::endl;
+	    pr_conflvl =  proton_pid[2212][1];	
+	    //std::cout << " prot conf " << pr_conflvl << std::endl;
+	    h_prot_conf->Fill(pr_conflvl);
+	    //std::cout << " final proton index " << prot_index << std::endl;
+	    V3_prot[1].SetXYZ(p[prot_index]*cx[prot_index], p[prot_index]*cy[prot_index], p[prot_index]*cz[prot_index]);
+	    V4_prot[1].SetXYZT(V3_prot[1].X(), V3_prot[1].Y(), V3_prot[1].Z(), sqrt(V3_prot[1].Mag2() + pow(prot_mass,2)));
+	    if(do_momCorr_proton && ExpOrSim == 1) V4_prot[1] = MomCorr->PcorN(V4_prot[1], 1, 2212);
+	    n_good_pr++;
+	    tot_good_pr++;
+	    final_pr->SetPxPyPzE(V4_prot[1].Px(),V4_prot[1].Py(),V4_prot[1].Pz(),V4_prot[1].E()) ;
+	    pr.SetPxPyPzE(V4_prot[1].Px(),V4_prot[1].Py(),V4_prot[1].Pz(),V4_prot[1].E());
+
+	    double proton_corr_vz  = getCorrZ(ExpOrSim, vx[prot_index], vy[prot_index], vz[prot_index], p[prot_index]*cx[prot_index], p[prot_index]*cy[prot_index], p[prot_index]*cz[prot_index], dc_sect[prot_index]);
+	    double el_corr_vz = getCorrZ(ExpOrSim, vx[e_index[1]], vy[e_index[1]], vz[e_index[1]], p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]], dc_sect[e_index[1]]);
+
+	    h_prot_deltavz->Fill( el_corr_vz - proton_corr_vz );
+	    h_prot_sect_deltavz[dc_sect[prot_index]-1]->Fill(el_corr_vz - proton_corr_vz);
+
+	    if ( temp_prot_conf > pr_conf && temp_pip_conf < pip_anticonf  && temp_kp_conf < pip_anticonf ){ 	  
+	      //std::cout << " filling " << std::endl;
+	      double pr_beta = getBeta(prot_index, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);	
+	      //h_pr_betap->Fill(V4_prot[1].P(), pr_beta);
+	      h_pr_thetaphi->Fill(180.0/TMath::Pi() * V4_prot[1].Theta(), 180.0/TMath::Pi() * V4_prot[1].Phi());
+	  
+	      h_pr_thetap_pc->Fill(V4_prot[1].P(), 180.0/TMath::Pi() * V4_prot[1].Theta());
+	  
+	      //std::cout << " >> DC SECTOR FOR PROTON " << " "  << " gpart " << gpart << std::endl;       
+	      if( dc_sect[prot_index] != 0 ){
+		//std::cout << " >> DC SECTOR FOR PROTON " << dc_sect[prot_index] - 1 << std::endl;
+		h_pr_sect_p[dc_sect[prot_index]-1]->Fill(p[prot_index]);
+		h_pr_sect_p_pc[dc_sect[prot_index]-1]->Fill(V4_prot[1].P());
+		h_pr_sect_betap[dc_sect[prot_index]-1]->Fill(p[prot_index], pr_beta);
+		h_pr_sect_betap_pc[dc_sect[prot_index]-1]->Fill(V4_prot[1].P(), pr_beta);
+		h_pr_sect_thetaphi[dc_sect[prot_index]-1]->Fill(180.0/TMath::Pi() * V4_prot[1].Theta(), 180.0/TMath::Pi() * V4_prot[1].Phi());
+		h_pr_dcr1->Fill(tl1_x[prot_index], tl1_y[prot_index]);
+		h_pr_dcr3->Fill(tl3_x[prot_index], tl3_y[prot_index]);
+	      }
+	    }
+	  }
 	}
-      }      
+      
+      
+	if( kp_index > 0 && kp_index != prot_index && kp_index != pip_index ){
+	  bool kp_deltavz_pass = hadronDeltaVzPass(ExpOrSim,vx,vy,vz,p,cx,cy,cz,dc_sect,kp_index,e_index);
+	  if( kp_deltavz_pass ){
+	    kp_conflvl = kaon_pid[321][1];
+	    h_kp_conf->Fill(kp_conflvl);
+	    //std::cout << " final kaon plus index " << kp_index << std::endl;
+	    V3_kp[1].SetXYZ(p[kp_index]*cx[kp_index], p[kp_index]*cy[kp_index], p[kp_index]*cz[kp_index]);
+	    V4_kp[1].SetXYZT(V3_kp[1].X(), V3_kp[1].Y(), V3_kp[1].Z(), sqrt(V3_kp[1].Mag2() + pow(kp_mass,2)));
+	    if(do_momCorr_kaon && ExpOrSim == 1) V4_kp[1] = MomCorr->PcorN(V4_kp[1], 1, 321);
+	    final_kp->SetXYZT(V4_kp[1].X(),V4_kp[1].Y(),V4_kp[1].Z(),V4_kp[1].T()) ;
+	    n_good_kp++;
+	    tot_good_kp++;
+	    kp.SetXYZT(V4_kp[1].X(),V4_kp[1].Y(),V4_kp[1].Z(),V4_kp[1].T());
+
+	    double kp_corr_vz  = getCorrZ(ExpOrSim, vx[kp_index], vy[kp_index], vz[kp_index], p[kp_index]*cx[kp_index], p[kp_index]*cy[kp_index], p[kp_index]*cz[kp_index], dc_sect[kp_index]);
+	    double el_corr_vz = getCorrZ(ExpOrSim, vx[e_index[1]], vy[e_index[1]], vz[e_index[1]], p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]], dc_sect[e_index[1]]);
+	
+	    h_kp_deltavz->Fill( el_corr_vz - kp_corr_vz );
+	    h_kp_sect_deltavz[dc_sect[kp_index]-1]->Fill( el_corr_vz - kp_corr_vz );
+	
+	    if ( temp_kp_conf > kp_conf && temp_pip_conf < pip_anticonf  && temp_prot_conf < pr_anticonf ){ 	  
+	  
+	      double kp_beta = getBeta(kp_index, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
+	      h_kp_betap->Fill(V4_kp[1].P(), kp_beta);
+	      h_kp_thetaphi->Fill(180.0/TMath::Pi() * V4_kp[1].Theta(), 180.0/TMath::Pi() * V4_kp[1].Phi());
+	  
+	      h_kp_thetap_pc->Fill(V4_kp[1].P(), 180.0/TMath::Pi() * V4_kp[1].Theta());
+	  
+	      if( dc_sect[kp_index] != 0 ){
+		h_kp_sect_p[dc_sect[kp_index]-1]->Fill(p[kp_index]);
+		h_kp_sect_p_pc[dc_sect[kp_index]-1]->Fill(V4_kp[1].P());
+		h_kp_sect_betap[dc_sect[kp_index]-1]->Fill(p[kp_index], kp_beta);
+		h_kp_sect_betap_pc[dc_sect[kp_index]-1]->Fill(V4_kp[1].P(), kp_beta);
+		//std::cout << " >> " << dc_sect[kp_index] - 1 << " " <<  180.0/TMath::Pi() * V4_kp[1].Theta() << " " << 180.0/TMath::Pi() * V4_kp[1].Phi()<< std::endl;
+		h_kp_sect_thetaphi[dc_sect[kp_index]-1]->Fill(180.0/TMath::Pi() * V4_kp[1].Theta(), 180.0/TMath::Pi() * V4_kp[1].Phi());
+		h_kp_dcr1->Fill(tl1_x[kp_index], tl1_y[kp_index]);
+		h_kp_dcr3->Fill(tl3_x[kp_index], tl3_y[kp_index]);
+
+	      }	
+	    }
+	  }      
+	}
+      
+
+	if( km_index > 0 ){
+	  bool km_deltavz_pass = hadronDeltaVzPass(ExpOrSim,vx,vy,vz,p,cx,cy,cz,dc_sect,km_index,e_index);
+	  if( km_deltavz_pass ){
+	    km_conflvl = kaonM_pid[-321][1];
+	    h_km_conf->Fill(km_conflvl);
+	    //std::cout << " final kaon minus index " << km_index << std::endl;
+	    V3_km[1].SetXYZ(p[km_index]*cx[km_index], p[km_index]*cy[km_index], p[km_index]*cz[km_index]);
+	    V4_km[1].SetXYZT(V3_km[1].X(), V3_km[1].Y(), V3_km[1].Z(), sqrt(V3_km[1].Mag2() + pow(km_mass,2)));
+	    if(do_momCorr_kaon && ExpOrSim == 1) V4_km[1] = MomCorr->PcorN(V4_km[1], -1, -321);
+	    final_km->SetXYZT(V4_km[1].X(),V4_km[1].Y(),V4_km[1].Z(),V4_km[1].T()) ;
+	    n_good_km++;
+	    tot_good_km++;
+	    km.SetXYZT(V4_km[1].X(),V4_km[1].Y(),V4_km[1].Z(),V4_km[1].T());
+
+	    double km_corr_vz  = getCorrZ(ExpOrSim, vx[km_index], vy[km_index], vz[km_index], p[km_index]*cx[km_index], p[km_index]*cy[km_index], p[km_index]*cz[km_index], dc_sect[km_index]);
+	    double el_corr_vz = getCorrZ(ExpOrSim, vx[e_index[1]], vy[e_index[1]], vz[e_index[1]], p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]], dc_sect[e_index[1]]);	
+	    h_km_deltavz->Fill( km_corr_vz - el_corr_vz );
+	    h_km_sect_deltavz[dc_sect[km_index]-1]->Fill( km_corr_vz - el_corr_vz );
+
+	    if ( temp_km_conf > km_conf && temp_pip_conf < pip_anticonf  && temp_prot_conf < pr_anticonf ){ 	  
+	  
+	      double km_beta = getBeta(km_index, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
+	      h_km_betap->Fill(V4_km[1].P(), km_beta);
+	      h_km_thetaphi->Fill(180.0/TMath::Pi() * V4_km[1].Theta(), 180.0/TMath::Pi() * V4_km[1].Phi());
+	  
+	      h_km_thetap_pc->Fill(V4_km[1].P(), 180.0/TMath::Pi() * V4_km[1].Theta());
+	  
+	      if( dc_sect[km_index] != 0 ){
+		h_km_sect_p[dc_sect[km_index]-1]->Fill(p[km_index]);
+		h_km_sect_p_pc[dc_sect[km_index]-1]->Fill(V4_km[1].P());
+		h_km_sect_betap[dc_sect[km_index]-1]->Fill(p[km_index], km_beta);
+		h_km_sect_betap_pc[dc_sect[km_index]-1]->Fill(V4_km[1].P(), km_beta);
+		//std::cout << " >> " << dc_sect[km_index] - 1 << " " <<  180.0/TMath::Pi() * V4_km[1].Theta() << " " << 180.0/TMath::Pi() * V4_km[1].Phi()<< std::endl;
+		h_km_sect_thetaphi[dc_sect[km_index]-1]->Fill(180.0/TMath::Pi() * V4_km[1].Theta(), 180.0/TMath::Pi() * V4_km[1].Phi());
+		h_km_dcr1->Fill(tl1_x[km_index], tl1_y[km_index]);
+		h_km_dcr3->Fill(tl3_x[km_index], tl3_y[km_index]);
+
+	      }	
+	    }
+	  }      
+	}    
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	if( pip_index > 0 ){
+	  //std::cout << " here " << std::endl;
+	  pip_conflvl = pip_pid[211][1];	
+	  //std::cout << " prot conf " << pr_conflvl << std::endl;
+	  h_pip_conf->Fill(pip_conflvl);
+	  V3_pip[1].SetXYZ(p[pip_index]*cx[pip_index], p[pip_index]*cy[pip_index], p[pip_index]*cz[pip_index]);
+	  V4_pip[1].SetXYZT(V3_pip[1].X(), V3_pip[1].Y(), V3_pip[1].Z(), sqrt(V3_pip[1].Mag2() + pow(pip_mass,2)));
+	  //if(do_momCorr_proton && ExpOrSim == 1) V4_prot[1] = MomCorr->PcorN(V4_prot[1], 1, 2212);
+	  n_good_pip++;
+	  //final_pr->SetXYZT(V4_prot[1].X(),V4_prot[1].Y(),V4_prot[1].Z(),V4_prot[1].T()) ;
+
+	  if ( temp_pip_conf > pip_conf ){ // && temp_pip_conf < pip_anticonf  && temp_kp_conf < pip_anticonf ){ 	  
+	    //std::cout << " filling " << std::endl;
+	    double pip_beta = getBeta(pip_index, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);	
+	    h_pip_betap->Fill(V4_pip[1].P(), pip_beta);
+	    //h_pip_thetaphi->Fill(180.0/TMath::Pi() * V4_pip[1].Theta(), 180.0/TMath::Pi() * V4_pip[1].Phi());
+	  
+	    //h_pip_thetap_pc->Fill(V4_pip[1].P(), 180.0/TMath::Pi() * V4_pip[1].Theta());
+
+	  
+	    //std::cout << " >> DC SECTOR FOR PROTON " << " "  << " gpart " << gpart << std::endl;       
+	    if( dc_sect[pip_index] != 0 ){
+	      //std::cout << " >> DC SECTOR FOR PROTON " << dc_sect[prot_index] - 1 << std::endl;
+	      //h_pip_sect_p[dc_sect[pip_index]-1]->Fill(p[pip_index]);
+	      ///h_pip_sect_p_pc[dc_sect[pip_index]-1]->Fill(V4_pip[1].P());
+	      h_pip_sect_betap[dc_sect[pip_index]-1]->Fill(p[pip_index], pip_beta);
+	      //h_pip_sect_betap_pc[dc_sect[pip_index]-1]->Fill(V4_pip[1].P(), pip_beta);
+	      //h_pip_sect_thetaphi[dc_sect[pip_index]-1]->Fill(180.0/TMath::Pi() * V4_pip[1].Theta(), 180.0/TMath::Pi() * V4_pip[1].Phi());
+	      //h_pip_dcr1->Fill(tl1_x[pip_index], tl1_y[pip_index]);
+	      //h_pip_dcr3->Fill(tl3_x[pip_index], tl3_y[pip_index]);
+	    }
+	  }
+	}
     
 
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      if( pip_index > 0 ){
-	//std::cout << " here " << std::endl;
-	pip_conflvl = pip_pid[211][1];	
-	//std::cout << " prot conf " << pr_conflvl << std::endl;
-	h_pip_conf->Fill(pr_conflvl);
-	V3_pip[1].SetXYZ(p[pip_index]*cx[pip_index], p[pip_index]*cy[pip_index], p[pip_index]*cz[pip_index]);
-	V4_pip[1].SetXYZT(V3_pip[1].X(), V3_pip[1].Y(), V3_pip[1].Z(), sqrt(V3_pip[1].Mag2() + pow(pip_mass,2)));
-	//if(do_momCorr_proton && ExpOrSim == 1) V4_prot[1] = MomCorr->PcorN(V4_prot[1], 1, 2212);
-	n_good_pip++;
-	//final_pr->SetXYZT(V4_prot[1].X(),V4_prot[1].Y(),V4_prot[1].Z(),V4_prot[1].T()) ;
+	if( pim_index > 0 ){
+	  //std::cout << " here " << std::endl;
+	  pim_conflvl = pim_pid[-211][1];	
+	  //std::cout << " prot conf " << pr_conflvl << std::endl;
+	  h_pim_conf->Fill(pim_conflvl);
+	  V3_pim[1].SetXYZ(p[pim_index]*cx[pim_index], p[pim_index]*cy[pim_index], p[pim_index]*cz[pim_index]);
+	  V4_pim[1].SetXYZT(V3_pim[1].X(), V3_pim[1].Y(), V3_pim[1].Z(), sqrt(V3_pim[1].Mag2() + pow(pim_mass,2)));
+	  //if(do_momCorr_proton && ExpOrSim == 1) V4_prot[1] = MomCorr->PcorN(V4_prot[1], 1, 2212);
+	  n_good_pim++;
+	  //final_pr->SetXYZT(V4_prot[1].X(),V4_prot[1].Y(),V4_prot[1].Z(),V4_prot[1].T()) ;
 
-	if ( temp_pip_conf > pip_conf ){ // && temp_pip_conf < pip_anticonf  && temp_kp_conf < pip_anticonf ){ 	  
-	  //std::cout << " filling " << std::endl;
-	  double pip_beta = getBeta(pip_index, e_index, sc_sect, dc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);	
-	  h_pip_betap->Fill(V4_pip[1].P(), pip_beta);
-	  //h_pip_thetaphi->Fill(180.0/TMath::Pi() * V4_pip[1].Theta(), 180.0/TMath::Pi() * V4_pip[1].Phi());
+	  if ( temp_pim_conf > pim_conf ){ // && temp_pip_conf < pip_anticonf  && temp_kp_conf < pip_anticonf ){ 	  
+	    //std::cout << " filling " << std::endl;
+	    double pim_beta = getBeta(pim_index, e_index,sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);	
+	    h_pim_betap->Fill(V4_pim[1].P(), pim_beta);
+	    //h_pip_thetaphi->Fill(180.0/TMath::Pi() * V4_pip[1].Theta(), 180.0/TMath::Pi() * V4_pip[1].Phi());	  
+	    //h_pip_thetap_pc->Fill(V4_pip[1].P(), 180.0/TMath::Pi() * V4_pip[1].Theta());
 	  
-	  //h_pip_thetap_pc->Fill(V4_pip[1].P(), 180.0/TMath::Pi() * V4_pip[1].Theta());
-
-	  
-	  //std::cout << " >> DC SECTOR FOR PROTON " << " "  << " gpart " << gpart << std::endl;       
-	  if( dc_sect[pip_index] != 0 ){
-	    //std::cout << " >> DC SECTOR FOR PROTON " << dc_sect[prot_index] - 1 << std::endl;
-	    //h_pip_sect_p[dc_sect[pip_index]-1]->Fill(p[pip_index]);
-	    ///h_pip_sect_p_pc[dc_sect[pip_index]-1]->Fill(V4_pip[1].P());
-	    h_pip_sect_betap[dc_sect[pip_index]-1]->Fill(p[pip_index], pip_beta);
-	    //h_pip_sect_betap_pc[dc_sect[pip_index]-1]->Fill(V4_pip[1].P(), pip_beta);
-	    //h_pip_sect_thetaphi[dc_sect[pip_index]-1]->Fill(180.0/TMath::Pi() * V4_pip[1].Theta(), 180.0/TMath::Pi() * V4_pip[1].Phi());
-	    //h_pip_dcr1->Fill(tl1_x[pip_index], tl1_y[pip_index]);
-	    //h_pip_dcr3->Fill(tl3_x[pip_index], tl3_y[pip_index]);
+	    //std::cout << " >> DC SECTOR FOR PROTON " << " "  << " gpart " << gpart << std::endl;       
+	    if( dc_sect[pim_index] != 0 ){
+	      //std::cout << " >> DC SECTOR FOR PROTON " << dc_sect[prot_index] - 1 << std::endl;
+	      //h_pip_sect_p[dc_sect[pip_index]-1]->Fill(p[pip_index]);
+	      ///h_pip_sect_p_pc[dc_sect[pip_index]-1]->Fill(V4_pip[1].P());
+	      h_pim_sect_betap[dc_sect[pim_index]-1]->Fill(p[pim_index], pim_beta);
+	      //h_pip_sect_betap_pc[dc_sect[pip_index]-1]->Fill(V4_pip[1].P(), pip_beta);
+	      //h_pip_sect_thetaphi[dc_sect[pip_index]-1]->Fill(180.0/TMath::Pi() * V4_pip[1].Theta(), 180.0/TMath::Pi() * V4_pip[1].Phi());
+	      //h_pip_dcr1->Fill(tl1_x[pip_index], tl1_y[pip_index]);
+	      //h_pip_dcr3->Fill(tl3_x[pip_index], tl3_y[pip_index]);
+	    }
 	  }
-	}
+	}    
       }
     }
     ////////////////////////////////////////////////////////////////////////
 
-    
+    //std::cout << " Event " << i << std::endl;
+    //std::cout << " number of good el " << n_good_el << std::endl;
+    //std::cout << " number of good pr " << n_good_pr << std::endl;
+    //std::cout << " number of good kp " << n_good_kp << std::endl;
+    //std::cout << " number of good km " << n_good_km << std::endl;
+
     //write out good particle lv to a tree and associated conf lvl
-    if( n_good_el == 1 ){ // && n_good_pr == 1 && n_good_kp == 1 ){
-      topology = 0;
+    //if( n_good_el == 1 ){ // && n_good_pr == 1 && n_good_kp == 1 ){
+    // topology = 0;
+    // hel=corr_hel;
+    // output_tree->Fill();
+    ///}
+    //if( n_good_el == 1 && n_good_pr == 1 ){
+    // topology = 1;
+    // hel=corr_hel;
+    // output_tree->Fill();
+    //}
+
+    if( n_good_el == 1 && n_good_pr == 1 && n_good_kp == 1 && el.P() > 0.5 ){
+      double Q2 = -(V4k - el).Mag2();
+      double w = sqrt(V4ISproton.M()*V4ISproton.M() - Q2 + 2*V4ISproton.M()*(V4k -el).E());
+      h_el_q2_pc->Fill(Q2);
+      h_w->Fill(w);
+      double pr_beta = getBeta(prot_index, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);	      
+      h_pr_betap->Fill(pr.P(), pr_beta);
+      h_epX_mnt_mass->Fill( pr_beta, (V4k + V4ISproton - el - pr).M() );
+      //std::cout << " Q2 " << Q2 << " w " << w << std::endl;
+      if (Q2 > 1.0 && w > 2.0 ){// && pr_conflvl > 0.1 && pr.P() < 3.0 ){	
+	h_epX_mass->Fill( (V4k + V4ISproton - el - pr).M() );
+	h_el_thetap_pc_final->Fill( el.P(), el.Theta() * 180.0/3.141592658 );  
+	h_pr_thetap_pc_final->Fill( pr.P(), pr.Theta() * 180.0/3.141592658 );  
+	h_kp_thetap_pc_final->Fill( kp.P(), kp.Theta() * 180.0/3.141592658 );  
+	h_km_thetap_pc_final->Fill( km.P(), km.Theta() * 180.0/3.141592658 );  
+      }
+    }
+
+    if( n_good_el == 1 && n_good_pr == 1 && n_good_kp == 1 && n_good_km == 0){
+      //std::cout << " final proton mntm " << final_pr->Px() << std::endl;
+      //std::cout << " writing topology 3 to tree " << std::endl;
+      topology = 3;
       hel=corr_hel;
+      //final_km->SetPxPyPzE(
       output_tree->Fill();
     }
-    if( n_good_el == 1 && n_good_pr == 1 ){
-      topology = 1;
-      hel=corr_hel;
-      output_tree->Fill();
-    }
-    if( n_good_el == 1 && n_good_pr == 1 && n_good_kp == 1 ){
-      topology = 2;
+    else if( n_good_el == 1 && n_good_pr == 1 && n_good_kp == 1 && n_good_km == 1 ){
+      //std::cout << " writing topology 4 to tree " << std::endl;
+      topology = 4;
       hel=corr_hel;
       output_tree->Fill();
     }
 
+    final_pr->SetXYZT(0.0,0.0,0.0,0.0);
+    final_kp->SetXYZT(0.0,0.0,0.0,0.0);
+    final_km->SetXYZT(0.0,0.0,0.0,0.0);
     
   }
 
