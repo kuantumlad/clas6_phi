@@ -481,6 +481,7 @@ int my_phi6(int iteration_number = 0,  int filestart = 0, int fileend = 1, int E
   
   //all negative betas
   TH2D *h_neg_betap = new TH2D("h_neg_betap","h_neg_betap", 200, 0.0, 4.5, 200, 0.0, 1.1);
+  TH2D *h_neg_dcr3_b = new TH2D("h_neg_dcr3_b","h_neg_dcr3_b", 500, 50.0, 400.0, 500, -200.0, 200.0);
 
   // mle plots
   TH1D *h_prot_conf = new TH1D("h_prot_conf","h_prot_conf", 200, 0.0, 1.05);
@@ -651,7 +652,7 @@ int my_phi6(int iteration_number = 0,  int filestart = 0, int fileend = 1, int E
   std::map< int, std::vector<TH2D*> > m_h_el_sect_cc_theta;
   std::vector<int> el_individual_cut_pass_rate;
 
-  for( int c = 0; c < 11; c++ ){
+  for( int c = 0; c < 12; c++ ){
     
     std::vector<TH1D*> h_temp_p;
     std::vector<TH1D*> h_temp_vz;
@@ -694,6 +695,71 @@ int my_phi6(int iteration_number = 0,  int filestart = 0, int fileend = 1, int E
     m_h_el_sect_cc_theta[c] = h_temp_cc_theta;
     el_individual_cut_pass_rate.push_back(0);
   }
+
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // hadron plots to check the affects of the various corrections on beta vs p and, dcr1, and vertex.
+  // will include plots for different confidence level cuts
+ 
+  std::map<int, std::vector<TH2D*> > m_h_pos_betap;
+  std::map<int, std::vector<TH2D*> > m_h_neg_betap;
+  std::map<int, std::vector<TH2D*> > m_h_pos_dcr1;
+  std::map<int, std::vector<TH2D*> > m_h_neg_dcr1;
+  std::map<int, std::vector<TH2D*> > m_h_pos_dcr3;
+  std::map<int, std::vector<TH2D*> > m_h_neg_dcr3;
+  std::map<int, std::vector<TH1D*> > m_h_pos_vz;
+  std::map<int, std::vector<TH1D*> > m_h_neg_vz;
+
+  //betavsp for various conflvl cuts
+  std::map<int, std::vector<TH2D*> > m_h_pr_betap_conflvl;
+  std::map<int, std::vector<TH2D*> > m_h_kp_betap_conflvl;
+  std::map<int, std::vector<TH2D*> > m_h_km_betap_conflvl;
+
+
+  for( int c = 0; c < 8; c++ ){
+    std::vector<TH2D*> temp_pos_betap;
+    std::vector<TH2D*> temp_neg_betap;
+    std::vector<TH2D*> temp_pos_dcr1;
+    std::vector<TH2D*> temp_neg_dcr1;
+    std::vector<TH2D*> temp_pos_dcr3;
+    std::vector<TH2D*> temp_neg_dcr3;
+    std::vector<TH1D*> temp_pos_vz;
+    std::vector<TH1D*> temp_neg_vz;
+
+    for( int s = 0; s <= 6; s++ ){
+      temp_pos_betap.push_back( new TH2D(Form("h_pos_s%d_cut%d_betap",s,c), Form("h_pos_s%d_cut%d_betap",s,c), 500, 0.0, 4.5, 500, 0.01, 1.2));
+      temp_neg_betap.push_back( new TH2D(Form("h_neg_s%d_cut%d_betap",s,c), Form("h_neg_s%d_cut%d_betap",s,c), 500, 0.0, 4.5, 500, 0.01, 1.2));
+      temp_pos_dcr1.push_back( new TH2D(Form("h_pos_s%d_cut%d_dcr1",s,c), Form("h_pos_s%d_cut%d_dcr1",s,c), 500, 0.0, 4.5, 500, 0.01, 1.2));
+      temp_neg_dcr1.push_back( new TH2D(Form("h_neg_s%d_cut%d_dcr1",s,c), Form("h_neg_s%d_cut%d_dcr1",s,c), 500, 0.0, 4.5, 500, 0.01, 1.2));
+      temp_pos_dcr3.push_back( new TH2D(Form("h_pos_s%d_cut%d_dcr3",s,c), Form("h_pos_s%d_cut%d_dcr3",s,c), 500, -100.0, 100.0, 500, -100.0, 100.0));
+      temp_neg_dcr3.push_back( new TH2D(Form("h_neg_s%d_cut%d_dcr3",s,c), Form("h_neg_s%d_cut%d_dcr3",s,c), 500, 50.0, 400.0, 500, -200.0, 200.0));
+      temp_pos_vz.push_back( new TH1D(Form("h_pos_s%d_cut%d_vz",s,c), Form("h_pos_s%d_cut%d_vz",s,c), 500, -32.0, -16.0));
+      temp_neg_vz.push_back( new TH1D(Form("h_neg_s%d_cut%d_vz",s,c), Form("h_neg_s%d_cut%d_vz",s,c), 500, -32.0, -16.0));
+    }
+    m_h_pos_betap[c]=temp_pos_betap;
+    m_h_neg_betap[c]=temp_neg_betap;
+    m_h_pos_dcr1[c]=temp_pos_dcr1;
+    m_h_neg_dcr1[c]=temp_neg_dcr1;
+    m_h_pos_dcr3[c]=temp_pos_dcr3;
+    m_h_neg_dcr3[c]=temp_neg_dcr3;
+    m_h_pos_vz[c]=temp_pos_vz;
+    m_h_neg_vz[c]=temp_neg_vz;
+  }
+
+  for( int c = 0; c < 10; c++ ){
+    std::vector<TH2D*> temp_pr_betap_conflvl;
+    std::vector<TH2D*> temp_kp_betap_conflvl;
+    std::vector<TH2D*> temp_km_betap_conflvl;
+    for( int s = 0; s <=6; s++ ){
+      temp_pr_betap_conflvl.push_back(new TH2D(Form("h_pr_s%d_conflvl%d_betap",s,c),Form("h_pr_s%d_conflvl%d_betap",s,c), 500, 0.0, 4.5, 500, 0.01, 1.2));
+      temp_kp_betap_conflvl.push_back(new TH2D(Form("h_kp_s%d_conflvl%d_betap",s,c),Form("h_kp_s%d_conflvl%d_betap",s,c), 500, 0.0, 4.5, 500, 0.01, 1.2));
+      temp_km_betap_conflvl.push_back(new TH2D(Form("h_km_s%d_conflvl%d_betap",s,c),Form("h_km_s%d_conflvl%d_betap",s,c), 500, 0.0, 4.5, 500, 0.01, 1.2));
+    }
+    m_h_pr_betap_conflvl[c]=temp_pr_betap_conflvl;
+    m_h_kp_betap_conflvl[c]=temp_kp_betap_conflvl;
+    m_h_km_betap_conflvl[c]=temp_km_betap_conflvl;
+  }
+
 
   int limit = h22chain->GetEntries() / 100;
   std::cout << " LIMIT " << limit << std::endl;
@@ -786,27 +852,231 @@ int my_phi6(int iteration_number = 0,  int filestart = 0, int fileend = 1, int E
 	}
       }     
       if( e_index[1] >= 0 ){
-	  double hadron_corr_vz  = getCorrZ(ExpOrSim, vx[j], vy[j], vz[j], p[j]*cx[j], p[j]*cy[j], p[j]*cz[j], dc_sect[j]);
-	  double el_corr_vz = getCorrZ(ExpOrSim, vx[e_index[1]], vy[e_index[1]], vz[e_index[1]], p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]], dc_sect[e_index[1]]);
+	double hadron_corr_vz  = getCorrZ(ExpOrSim, vx[j], vy[j], vz[j], p[j]*cx[j], p[j]*cy[j], p[j]*cz[j], dc_sect[j]);
+	double el_corr_vz = getCorrZ(ExpOrSim, vx[e_index[1]], vy[e_index[1]], vz[e_index[1]], p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]], dc_sect[e_index[1]]);
+	
+	double el_corr_start_time  =  e_sctimeCorr(ExpOrSim, sc_t[e_index[1]], sc_sect[e_index[1]], sc_pd[e_index[1]], currentrunno);
 	if( q[j] > 0 ){
-	   double pos_beta = getBeta(j, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
-	  h_pos_betap->Fill(p[j], pos_beta);
-	  if( dc_sect[j] != 0 ){
-	    h_pos_sect_betap[dc_sect[j] - 1]->Fill(p[j], pos_beta);
+	  double pos_beta = getBeta(j, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
+	  double pos_beta_uncorr = (sc_r[j]/(sc_t[j]-sc_t[e_index[1]]))/speed_of_light;
+	  double pos_beta_corr_elt = (sc_r[j]/(sc_t[j]-el_corr_start_time))/speed_of_light;
+	  double pos_beta_corr_ht = (sc_r[j]/(h_sctimeCorr(ExpOrSim, sc_t[j], sc_sect[j], sc_pd[j], currentrunno)-sc_t[e_index[1]]))/speed_of_light;
+
+	   h_pos_betap->Fill(p[j], pos_beta);
+	   m_h_pos_betap[0][0]->Fill(p[j], pos_beta);
+	   m_h_pos_dcr1[0][0]->Fill(tl1_x[j], tl1_y[j]);
+	   m_h_pos_dcr3[0][0]->Fill(tl3_x[j], tl3_y[j]);
+	   m_h_pos_vz[0][0]->Fill(vz[j]);	 
+
+	  if( dc_sect[j] != 0 || sc_sect[j] != 0 ){
+	    h_pos_sect_betap[sc_sect[j]]->Fill(p[j], pos_beta);
 	    h_pos_dcr3_b->Fill(tl3_x[j], tl3_y[j]);
+	    h_poshadron_sect_deltavz[dc_sect[j]-1]->Fill( el_corr_vz - hadron_corr_vz );
+ 	    m_h_pos_betap[0][sc_sect[j]]->Fill(p[j], pos_beta);
+	    m_h_pos_dcr1[0][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_pos_dcr3[0][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_pos_vz[0][dc_sect[j]]->Fill(vz[j]);
 	  }
+
+
+	  if( goodORbadSCpaddle(dc_sect[j], sc_pd[j]) == 1 ){
+	    m_h_pos_betap[1][0]->Fill(p[j], pos_beta);
+	    m_h_pos_dcr1[1][0]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_pos_dcr3[1][0]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_pos_vz[1][0]->Fill(vz[j]);	 
+
+	    if( dc_sect[j] != 0 ){
+	      m_h_pos_betap[1][sc_sect[j]]->Fill(p[j], pos_beta);
+	      m_h_pos_dcr1[1][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	      m_h_pos_dcr3[1][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	      m_h_pos_vz[1][dc_sect[j]]->Fill(vz[j]);
+	    }	     
+	  }
+
+	  if( pip_R1fid_pass(pip_R1fid_strict, dc_sect[j], tl1_x[j], tl1_y[j]) ){
+	    m_h_pos_betap[2][0]->Fill(p[j], pos_beta);
+	    m_h_pos_dcr1[2][0]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_pos_dcr3[2][0]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_pos_vz[2][0]->Fill(vz[j]);	 
+
+	    if( dc_sect[j] != 0 ){
+	      m_h_pos_betap[2][sc_sect[j]]->Fill(p[j], pos_beta);
+	      m_h_pos_dcr1[2][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	      m_h_pos_dcr3[2][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	      m_h_pos_vz[2][dc_sect[j]]->Fill(vz[j]);
+	    }	     	  
+	  }
+
+	  
+	  m_h_pos_betap[3][0]->Fill(p[j], pos_beta_uncorr);
+	  m_h_pos_dcr1[3][0]->Fill(tl1_x[j], tl1_y[j]);
+	  m_h_pos_dcr3[3][0]->Fill(tl3_x[j], tl3_y[j]);
+	  m_h_pos_vz[3][0]->Fill(hadron_corr_vz);	 
+	  
+	  if( dc_sect[j] != 0 ){
+	    m_h_pos_betap[3][sc_sect[j]]->Fill(p[j], pos_beta_uncorr);
+	    m_h_pos_dcr1[3][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_pos_dcr3[3][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_pos_vz[3][dc_sect[j]]->Fill(hadron_corr_vz);
+	  }	     	  
+
+	  /// plot beta uncorrected 
+	  m_h_pos_betap[4][0]->Fill(p[j], pos_beta_uncorr);
+	  m_h_pos_dcr1[4][0]->Fill(tl1_x[j], tl1_y[j]);
+	  m_h_pos_dcr3[4][0]->Fill(tl3_x[j], tl3_y[j]);
+	  m_h_pos_vz[4][0]->Fill(vz[j]);	 
+	   
+	  if( dc_sect[j] != 0 ){
+	    m_h_pos_betap[4][sc_sect[j]]->Fill(p[j], pos_beta_uncorr);
+	    m_h_pos_dcr1[4][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_pos_dcr3[4][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_pos_vz[4][dc_sect[j]]->Fill(vz[j]);
+	  }	     	  
+
+	  /// plot beta uncorrected ht but corr elt 
+	  m_h_pos_betap[5][0]->Fill(p[j], pos_beta_corr_elt);
+	  m_h_pos_dcr1[5][0]->Fill(tl1_x[j], tl1_y[j]);
+	  m_h_pos_dcr3[5][0]->Fill(tl3_x[j], tl3_y[j]);
+	  m_h_pos_vz[5][0]->Fill(vz[j]);	 
+	   
+	  if( dc_sect[j] != 0 ){
+	    m_h_pos_betap[5][sc_sect[j]]->Fill(p[j], pos_beta_corr_elt);
+	    m_h_pos_dcr1[5][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_pos_dcr3[5][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_pos_vz[5][dc_sect[j]]->Fill(vz[j]);
+	  }	     	  
+	   
+
+	  /// plot beta uncorrected elt but  corr ht
+	  m_h_pos_betap[6][0]->Fill(p[j], pos_beta_corr_ht);
+	  m_h_pos_dcr1[6][0]->Fill(tl1_x[j], tl1_y[j]);
+	  m_h_pos_dcr3[6][0]->Fill(tl3_x[j], tl3_y[j]);
+	  m_h_pos_vz[6][0]->Fill(vz[j]);	 
+	   
+	  if( dc_sect[j] != 0 ){
+	    m_h_pos_betap[6][sc_sect[j]]->Fill(p[j], pos_beta_corr_ht);
+	    m_h_pos_dcr1[6][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_pos_dcr3[6][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_pos_vz[6][dc_sect[j]]->Fill(vz[j]);
+	  }	     	  
+	   	 	  
 	  h_poshadron_deltavz->Fill( el_corr_vz - hadron_corr_vz );
+
+
+
 	}
 	else if( q[j] < 0 ){
 	  double neg_beta = getBeta(j, e_index, sc_sect, sc_t, sc_r, sc_pd, currentrunno, ExpOrSim);
+	  double neg_beta_uncorr = (sc_r[j]/(sc_t[j]-sc_t[e_index[1]]))/speed_of_light;
+	  double neg_beta_corr_elt = (sc_r[j]/(sc_t[j]-el_corr_start_time))/speed_of_light;
+	  double neg_beta_corr_ht = (sc_r[j]/(h_sctimeCorr(ExpOrSim, sc_t[j], sc_sect[j], sc_pd[j], currentrunno)-sc_t[e_index[1]]))/speed_of_light;
+
 	  h_neg_betap->Fill(p[j], neg_beta);
+	   
+ 	  m_h_neg_betap[0][0]->Fill(p[j], neg_beta);
+	  m_h_neg_dcr1[0][0]->Fill(tl1_x[j], tl1_y[j]);
+	  m_h_neg_dcr3[0][0]->Fill(tl3_x[j], tl3_y[j]);
+	  m_h_neg_vz[0][0]->Fill(vz[j]);
+
 	  if( dc_sect[j] != 0 ){
-	    h_neg_sect_betap[dc_sect[j] - 1]->Fill(p[j], neg_beta);	    
+	    h_neg_sect_betap[sc_sect[j] - 1]->Fill(p[j], neg_beta);	    
+	    h_neg_dcr3_b->Fill(tl3_x[j], tl3_y[j]);
+	    h_neghadron_sect_deltavz[dc_sect[j]-1]->Fill( el_corr_vz - hadron_corr_vz );
+	    m_h_neg_betap[0][sc_sect[j]]->Fill(p[j], neg_beta);
+	    m_h_neg_dcr1[0][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_neg_dcr3[0][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_neg_vz[0][dc_sect[j]]->Fill(vz[j]);
+
 	  }
+	  
+	  if( goodORbadSCpaddle(dc_sect[j], sc_pd[j]) == 1 ){
+	    m_h_neg_betap[1][0]->Fill(p[j], neg_beta);
+	    m_h_neg_dcr1[1][0]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_neg_dcr3[1][0]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_neg_vz[1][0]->Fill(vz[j]);	 
+
+	    if( dc_sect[j] != 0 ){
+	      m_h_neg_betap[1][sc_sect[j]]->Fill(p[j], neg_beta);
+	      m_h_neg_dcr1[1][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	      m_h_neg_dcr3[1][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	      m_h_neg_vz[1][dc_sect[j]]->Fill(vz[j]);
+	    }	     
+	  }
+
+	  if( pip_R1fid_pass(pip_R1fid_strict, dc_sect[j], tl1_x[j], tl1_y[j]) ){
+	    m_h_neg_betap[2][0]->Fill(p[j], neg_beta);
+	    m_h_neg_dcr1[2][0]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_neg_dcr3[2][0]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_neg_vz[2][0]->Fill(vz[j]);	 
+
+	    if( dc_sect[j] != 0 ){
+	      m_h_neg_betap[2][sc_sect[j]]->Fill(p[j], neg_beta);
+	      m_h_neg_dcr1[2][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	      m_h_neg_dcr3[2][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	      m_h_neg_vz[2][dc_sect[j]]->Fill(vz[j]);
+	    }	     	  
+	  }
+
+	  
+	  m_h_neg_betap[3][0]->Fill(p[j], neg_beta_uncorr);
+	  m_h_neg_dcr1[3][0]->Fill(tl1_x[j], tl1_y[j]);
+	  m_h_neg_dcr3[3][0]->Fill(tl3_x[j], tl3_y[j]);
+	  m_h_neg_vz[3][0]->Fill(hadron_corr_vz);	 
+	  
+	  if( dc_sect[j] != 0 ){
+	    m_h_neg_betap[3][sc_sect[j]]->Fill(p[j], neg_beta_uncorr);
+	    m_h_neg_dcr1[3][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_neg_dcr3[3][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_neg_vz[3][dc_sect[j]]->Fill(hadron_corr_vz);
+	  }	     	  
+
+	  /// plot beta uncorrected 
+	  m_h_neg_betap[4][0]->Fill(p[j], neg_beta_uncorr);
+	  m_h_neg_dcr1[4][0]->Fill(tl1_x[j], tl1_y[j]);
+	  m_h_neg_dcr3[4][0]->Fill(tl3_x[j], tl3_y[j]);
+	  m_h_neg_vz[4][0]->Fill(vz[j]);	 
+	   
+	  if( dc_sect[j] != 0 ){
+	    m_h_neg_betap[4][sc_sect[j]]->Fill(p[j], neg_beta_uncorr);
+	    m_h_neg_dcr1[4][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_neg_dcr3[4][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_neg_vz[4][dc_sect[j]]->Fill(vz[j]);
+	  }	     	  
+
+	  /// plot beta uncorrected ht but corr elt 
+	  m_h_neg_betap[5][0]->Fill(p[j], neg_beta_corr_elt);
+	  m_h_neg_dcr1[5][0]->Fill(tl1_x[j], tl1_y[j]);
+	  m_h_neg_dcr3[5][0]->Fill(tl3_x[j], tl3_y[j]);
+	  m_h_neg_vz[5][0]->Fill(vz[j]);	 
+	   
+	  if( dc_sect[j] != 0 ){
+	    m_h_neg_betap[5][sc_sect[j]]->Fill(p[j], neg_beta_corr_elt);
+	    m_h_neg_dcr1[5][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_neg_dcr3[5][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_neg_vz[5][dc_sect[j]]->Fill(vz[j]);
+	  }	     	  
+	   
+	  /// plot beta uncorrected elt but  corr ht
+	  m_h_neg_betap[6][0]->Fill(p[j], neg_beta_corr_ht);
+	  m_h_neg_dcr1[6][0]->Fill(tl1_x[j], tl1_y[j]);
+	  m_h_neg_dcr3[6][0]->Fill(tl3_x[j], tl3_y[j]);
+	  m_h_neg_vz[6][0]->Fill(vz[j]);	 
+	   
+	  if( dc_sect[j] != 0 ){
+	    m_h_neg_betap[6][sc_sect[j]]->Fill(p[j], neg_beta_corr_ht);
+	    m_h_neg_dcr1[6][dc_sect[j]]->Fill(tl1_x[j], tl1_y[j]);
+	    m_h_neg_dcr3[6][dc_sect[j]]->Fill(tl3_x[j], tl3_y[j]);
+	    m_h_neg_vz[6][dc_sect[j]]->Fill(vz[j]);
+	  }	     	  
+	 
 	  h_neghadron_deltavz->Fill( el_corr_vz - hadron_corr_vz );
+
 	}
       }
     }
+											
+											
+						    
 
     int prot_index = -1;
     if( e_index[1] >= 0 ){
@@ -973,7 +1243,7 @@ int my_phi6(int iteration_number = 0,  int filestart = 0, int fileend = 1, int E
 	    double el_corr_vz = getCorrZ(ExpOrSim, vx[e_index[1]], vy[e_index[1]], vz[e_index[1]], p[e_index[1]]*cx[e_index[1]], p[e_index[1]]*cy[e_index[1]], p[e_index[1]]*cz[e_index[1]], dc_sect[e_index[1]]);
 
 	    h_prot_deltavz->Fill( el_corr_vz - proton_corr_vz );
-	    h_prot_sect_deltavz[dc_sect[prot_index]-1]->Fill(el_corr_vz - proton_corr_vz);
+ 	    h_prot_sect_deltavz[dc_sect[prot_index]-1]->Fill(el_corr_vz - proton_corr_vz);
 
 	    if ( temp_prot_conf > pr_conf && temp_pip_conf < pip_anticonf  && temp_kp_conf < pip_anticonf ){ 	  
 	      //std::cout << " filling " << std::endl;

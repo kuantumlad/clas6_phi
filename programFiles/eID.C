@@ -305,6 +305,36 @@ int eID(Int_t gpart, Int_t q[], Float_t p[], UChar_t cc_sect[], UChar_t sc_sect[
 	    h_cc_theta[9][0]->Fill(segment,thetaCC);
 	  }	  
 	  
+	  if( e_CCNphe_pass(e_CCnphe_strict,nphe[k]) ){
+
+	    h_p[10][(int)dc_sect[k]]->Fill(p[k]);
+	    h_vz[10][(int)dc_sect[k]]->Fill(vz[k]);
+	    h_corr_vz[10][(int)dc_sect[k]]->Fill(corr_vz);
+	    h_ectotp[10][(int)dc_sect[k]]->Fill(p[k], etot[k]/p[k]);
+	    h_eceo_ecei[10][(int)ec_sect[k]]->Fill( ec_ei[k], ec_eo[k] );
+	    h_ec_pos[10][(int)ec_sect[k]]->Fill(ech_x[k], ech_y[k]);
+	    h_nphe[10][(int)cc_sect[k]]->Fill(nphe[k]);
+	    h_theta_phi[10][(int)dc_sect[k]]->Fill(relphi,thetaCC);
+	    h_dcr1[10][(int)dc_sect[k]]->Fill(tl1_x[k], tl1_y[k]);
+	    h_dcr3[10][(int)dc_sect[k]]->Fill(tl3_x[k], tl3_y[k]);
+	    int pmt = cc_segm[k]/1000 -1;
+	    int segment = cc_segm[k]%1000/10;	  
+	    h_cc_theta[10][(int)sc_sect[k]]->Fill(segment,thetaCC);
+
+	    h_p[10][0]->Fill(p[k]);
+	    h_vz[10][0]->Fill(vz[k]); 
+ 	    h_corr_vz[10][0]->Fill(corr_vz); 
+	    h_ectotp[10][0]->Fill(p[k], etot[k]/p[k]);
+	    h_eceo_ecei[10][0]->Fill( ec_ei[k], ec_eo[k] );
+	    h_ec_pos[10][0]->Fill(ech_x[k], ech_y[k]);
+	    h_nphe[10][0]->Fill(nphe[k]);
+	    h_theta_phi[10][0]->Fill(relphi,thetaCC);
+	    h_dcr1[10][0]->Fill(tl1_x[k], tl1_y[k]);
+	    h_dcr3[10][0]->Fill(tl3_x[k], tl3_y[k]);
+	    h_cc_theta[10][0]->Fill(segment,thetaCC);
+	  }
+
+
 	  if (p[k] > 0.5 && p[k] < 6.0 ){
 	    if(zvertex_pass) {
 	      ECsampling_pass = e_ECsampling_pass(e_ECsampling_strict, ExpOrSim, dc_sect[k], etot[k], p[k], el_ecsf_mean, el_ecsf_sigma ); el_cut_pass_rate[0]++; 
@@ -345,32 +375,32 @@ int eID(Int_t gpart, Int_t q[], Float_t p[], UChar_t cc_sect[], UChar_t sc_sect[
 			      if(zvertex_pass && ECsampling_pass && ECoutVin_pass && ECgeometric_pass && CCthetaMatching_pass && R1fid_pass && R3fid_pass && CCphiMatching_pass && CCfiducial_pass && CCnphe_pass) {
 				Veindex.push_back(k);  el_cut_pass_rate[9]++; 
 				//std::cout << " pass ccnphe " << std::endl;
-				h_p[10][(int)dc_sect[k]]->Fill(p[k]);
-				h_vz[10][(int)dc_sect[k]]->Fill(vz[k]);
-				h_corr_vz[10][(int)dc_sect[k]]->Fill(corr_vz);
-				h_ectotp[10][(int)dc_sect[k]]->Fill(p[k], etot[k]/p[k]);
-				h_eceo_ecei[10][(int)ec_sect[k]]->Fill( ec_ei[k], ec_eo[k] );
-				h_ec_pos[10][(int)ec_sect[k]]->Fill(ech_x[k], ech_y[k]);
-				h_nphe[10][(int)cc_sect[k]]->Fill(nphe[k]);
-				h_theta_phi[10][(int)dc_sect[k]]->Fill(relphi,thetaCC);
-				h_dcr1[10][(int)dc_sect[k]]->Fill(tl1_x[k], tl1_y[k]);
-				h_dcr3[10][(int)dc_sect[k]]->Fill(tl3_x[k], tl3_y[k]);
+				h_p[11][(int)dc_sect[k]]->Fill(p[k]);
+				h_vz[11][(int)dc_sect[k]]->Fill(vz[k]);
+				h_corr_vz[11][(int)dc_sect[k]]->Fill(corr_vz);
+				h_ectotp[11][(int)dc_sect[k]]->Fill(p[k], etot[k]/p[k]);
+				h_eceo_ecei[11][(int)ec_sect[k]]->Fill( ec_ei[k], ec_eo[k] );
+				h_ec_pos[11][(int)ec_sect[k]]->Fill(ech_x[k], ech_y[k]);
+				h_nphe[11][(int)cc_sect[k]]->Fill(nphe[k]);
+				h_theta_phi[11][(int)dc_sect[k]]->Fill(relphi,thetaCC);
+				h_dcr1[11][(int)dc_sect[k]]->Fill(tl1_x[k], tl1_y[k]);
+				h_dcr3[11][(int)dc_sect[k]]->Fill(tl3_x[k], tl3_y[k]);
 				int pmt = cc_segm[k]/1000 -1;
 				int segment = cc_segm[k]%1000/10;	  
-				h_cc_theta[10][(int)sc_sect[k]]->Fill(segment,thetaCC);
+				h_cc_theta[11][(int)sc_sect[k]]->Fill(segment,thetaCC);
 
 				//integrated over all sectors
-				h_p[10][0]->Fill(p[k]);
-				h_vz[10][0]->Fill(vz[k]); 
-				h_corr_vz[10][0]->Fill(corr_vz); 
-				h_ectotp[10][0]->Fill(p[k], etot[k]/p[k]);
-				h_eceo_ecei[10][0]->Fill( ec_ei[k], ec_eo[k] );
-				h_ec_pos[10][0]->Fill(ech_x[k], ech_y[k]);
-				h_nphe[10][0]->Fill(nphe[k]);
-				h_theta_phi[10][0]->Fill(relphi,thetaCC);
-				h_dcr1[10][0]->Fill(tl1_x[k], tl1_y[k]);
-				h_dcr3[10][0]->Fill(tl3_x[k], tl3_y[k]);
-				h_cc_theta[10][0]->Fill(segment,thetaCC);
+				h_p[11][0]->Fill(p[k]);
+				h_vz[11][0]->Fill(vz[k]); 
+				h_corr_vz[11][0]->Fill(corr_vz); 
+				h_ectotp[11][0]->Fill(p[k], etot[k]/p[k]);
+				h_eceo_ecei[11][0]->Fill( ec_ei[k], ec_eo[k] );
+				h_ec_pos[11][0]->Fill(ech_x[k], ech_y[k]);
+				h_nphe[11][0]->Fill(nphe[k]);
+				h_theta_phi[11][0]->Fill(relphi,thetaCC);
+				h_dcr1[11][0]->Fill(tl1_x[k], tl1_y[k]);
+				h_dcr3[11][0]->Fill(tl3_x[k], tl3_y[k]);
+				h_cc_theta[11][0]->Fill(segment,thetaCC);
 			      }
 			    }
 			  }

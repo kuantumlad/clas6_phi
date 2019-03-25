@@ -161,7 +161,7 @@ int hadronBetaTool( int filestart = 1, int Nfiles = 1){
   // %%%%% stuff for output root files %%%%%
   string outfilename;
   TFile *outputfile;
-  outputfile = new TFile("hadron_beta_out.root","RECREATE");
+  outputfile = new TFile("hadron_beta_out_1run.root","RECREATE");
 
   cout<<"entries: "<<h22chain->GetEntries()/1000<<" thousand"<<endl;
 
